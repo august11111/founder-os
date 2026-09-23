@@ -1,0 +1,574 @@
+{
+  "meta": {
+    "phase": "Discovery",
+    "week": 1,
+    "focus_today": "",
+    "quote": "",
+    "quote_author": "",
+    "eval_date": "",
+    "schema_version": 5,
+    "habits_migrated": true,
+    "updated": "2026-01-15"
+  },
+  "tasks": [
+    {
+      "id": "th1",
+      "title": "📔 Journaling",
+      "quadrant": "Q2",
+      "done": false,
+      "recurrence": "daily",
+      "weekdays": [],
+      "completions": [],
+      "quickwin": false,
+      "linked_subgoal_id": null
+    },
+    {
+      "id": "th2",
+      "title": "🧠 Deep Work",
+      "quadrant": "Q2",
+      "done": false,
+      "recurrence": "daily",
+      "weekdays": [],
+      "completions": [],
+      "quickwin": false,
+      "linked_subgoal_id": null
+    },
+    {
+      "id": "th3",
+      "title": "🎙️ Interview",
+      "quadrant": "Q2",
+      "done": false,
+      "recurrence": "daily",
+      "weekdays": [],
+      "completions": [],
+      "quickwin": false,
+      "linked_subgoal_id": null
+    },
+    {
+      "id": "th4",
+      "title": "🏃 Sport",
+      "quadrant": "Q2",
+      "done": false,
+      "recurrence": "daily",
+      "weekdays": [],
+      "completions": [],
+      "quickwin": false,
+      "linked_subgoal_id": null
+    },
+    {
+      "id": "td1",
+      "title": "Relire son pitch à voix haute",
+      "quadrant": "Q2",
+      "done": false,
+      "recurrence": "none",
+      "weekdays": [],
+      "completions": [],
+      "quickwin": true,
+      "linked_subgoal_id": null
+    },
+    {
+      "id": "td2",
+      "title": "Envoyer 5 demandes de connexion",
+      "quadrant": "Q1",
+      "done": false,
+      "recurrence": "none",
+      "weekdays": [],
+      "completions": [],
+      "quickwin": true,
+      "linked_subgoal_id": null
+    }
+  ],
+  "contacts": [
+    {
+      "id": "c1",
+      "name": "Camille Durand",
+      "company": "Atelier Lumière",
+      "secteur": "Secteur d’exemple",
+      "pertinence": 4,
+      "last_contact": "2026-01-12",
+      "notes": "Contact de démonstration — remplacez-le par vos vrais prospects.",
+      "interactions": [
+        {
+          "id": "ia1",
+          "type": "li_demande",
+          "date": "2026-01-08",
+          "note": "",
+          "next_followup": null
+        },
+        {
+          "id": "ia2",
+          "type": "li_accepte",
+          "date": "2026-01-10",
+          "note": "",
+          "next_followup": null
+        },
+        {
+          "id": "ia3",
+          "type": "li_msg_envoye",
+          "date": "2026-01-12",
+          "note": "Proposition de RDV",
+          "next_followup": "2026-01-19"
+        }
+      ],
+      "email": "",
+      "phone": "",
+      "linkedin": ""
+    },
+    {
+      "id": "c2",
+      "name": "Sacha Morel",
+      "company": "Groupe Novaé",
+      "secteur": "Secteur d’exemple",
+      "pertinence": 5,
+      "last_contact": "2026-01-14",
+      "notes": "Contact de démonstration — remplacez-le par vos vrais prospects.",
+      "interactions": [
+        {
+          "id": "ia4",
+          "type": "li_demande",
+          "date": "2026-01-05",
+          "note": "",
+          "next_followup": null
+        },
+        {
+          "id": "ia5",
+          "type": "li_accepte",
+          "date": "2026-01-07",
+          "note": "",
+          "next_followup": null
+        },
+        {
+          "id": "ia6",
+          "type": "rdv_fixe",
+          "date": "2026-01-14",
+          "note": "Échange de 30 min",
+          "next_followup": null
+        }
+      ],
+      "email": "",
+      "phone": "",
+      "linkedin": ""
+    },
+    {
+      "id": "c3",
+      "name": "Léa Bernard",
+      "company": "Indépendante",
+      "secteur": "Secteur d’exemple",
+      "pertinence": 2,
+      "last_contact": "2026-01-03",
+      "notes": "Contact de démonstration — remplacez-le par vos vrais prospects.",
+      "interactions": [
+        {
+          "id": "ia7",
+          "type": "li_demande",
+          "date": "2026-01-03",
+          "note": "",
+          "next_followup": null
+        }
+      ],
+      "email": "",
+      "phone": "",
+      "linkedin": ""
+    }
+  ],
+  "interviews": [],
+  "ideas": [],
+  "habits": [],
+  "insights": [],
+  "calendar_events": [],
+  "roadmap": [
+    {
+      "id": "rm1",
+      "title": "Rédiger la vision à 3 ans",
+      "description": "Une page : où en est le projet dans 3 ans, et pourquoi",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🧭",
+      "category": "strategie",
+      "order": 1,
+      "parent_id": null
+    },
+    {
+      "id": "rm2",
+      "title": "Benchmark de 10 acteurs du marché",
+      "description": "Positionnement, prix, forces et angles morts de chacun",
+      "target": 10,
+      "progress": 0,
+      "completed": false,
+      "icon": "🧭",
+      "category": "strategie",
+      "order": 2,
+      "parent_id": null
+    },
+    {
+      "id": "rm3",
+      "title": "Définir le client idéal (ICP)",
+      "description": "Qui est-il, où le trouver, pourquoi lui en premier",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🧭",
+      "category": "strategie",
+      "order": 3,
+      "parent_id": null
+    },
+    {
+      "id": "rm4",
+      "title": "Business Model Canvas complet",
+      "description": "Les 9 blocs remplis et cohérents entre eux",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🧭",
+      "category": "strategie",
+      "order": 4,
+      "parent_id": null
+    },
+    {
+      "id": "rm5",
+      "title": "Pitch de 30 secondes rodé",
+      "description": "Testé à l’oral sur au moins 5 personnes",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "📣",
+      "category": "marketing",
+      "order": 5,
+      "parent_id": null
+    },
+    {
+      "id": "rm6",
+      "title": "Mettre la landing page en ligne",
+      "description": "Promesse claire et capture d’emails",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "📣",
+      "category": "marketing",
+      "order": 6,
+      "parent_id": null
+    },
+    {
+      "id": "rm7",
+      "title": "Constituer un fichier de 50 prospects",
+      "description": "Qualifiés, avec un moyen de les contacter",
+      "target": 50,
+      "progress": 0,
+      "completed": false,
+      "icon": "📣",
+      "category": "marketing",
+      "order": 7,
+      "parent_id": null
+    },
+    {
+      "id": "rm8",
+      "title": "Créer l’identité visuelle",
+      "description": "Logo, palette, typographie et usages de base",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "📣",
+      "category": "marketing",
+      "order": 8,
+      "parent_id": null
+    },
+    {
+      "id": "rm9",
+      "title": "Publier 8 posts",
+      "description": "Construire l’audience et la crédibilité sur le secteur",
+      "target": 8,
+      "progress": 0,
+      "completed": false,
+      "icon": "📣",
+      "category": "marketing",
+      "order": 9,
+      "parent_id": null
+    },
+    {
+      "id": "rm10",
+      "title": "Réaliser 20 interviews prospects",
+      "description": "Valider que le problème est réel et douloureux",
+      "target": 20,
+      "progress": 0,
+      "completed": false,
+      "icon": "🤝",
+      "category": "vente",
+      "order": 10,
+      "parent_id": null
+    },
+    {
+      "id": "rm11",
+      "title": "Établir la grille tarifaire v1",
+      "description": "Ce qu’on vend, à quel prix, sous quelle forme",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🤝",
+      "category": "vente",
+      "order": 11,
+      "parent_id": null
+    },
+    {
+      "id": "rm12",
+      "title": "Obtenir 3 engagements écrits",
+      "description": "Lettres d’intention ou promesses de test signées",
+      "target": 3,
+      "progress": 0,
+      "completed": false,
+      "icon": "🤝",
+      "category": "vente",
+      "order": 12,
+      "parent_id": null
+    },
+    {
+      "id": "rm13",
+      "title": "Lancer un premier pilote client",
+      "description": "Un vrai client, en conditions réelles",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🤝",
+      "category": "vente",
+      "order": 13,
+      "parent_id": null
+    },
+    {
+      "id": "rm14",
+      "title": "Construire le prévisionnel 3 ans",
+      "description": "Compte de résultat et trésorerie sur 36 mois",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "💰",
+      "category": "finance",
+      "order": 14,
+      "parent_id": null
+    },
+    {
+      "id": "rm15",
+      "title": "Chiffrer les unit economics",
+      "description": "Ce que coûte et ce que rapporte un client",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "💰",
+      "category": "finance",
+      "order": 15,
+      "parent_id": null
+    },
+    {
+      "id": "rm16",
+      "title": "Identifier financements et aides",
+      "description": "Subventions, concours, prêts, love money",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "💰",
+      "category": "finance",
+      "order": 16,
+      "parent_id": null
+    },
+    {
+      "id": "rm17",
+      "title": "Chiffrer le budget du prototype",
+      "description": "Ce que coûte réellement la première version",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "💰",
+      "category": "finance",
+      "order": 17,
+      "parent_id": null
+    },
+    {
+      "id": "rm18",
+      "title": "Analyser l’impact environnemental",
+      "description": "Fabrication, usage et fin de vie de ce que tu produis",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🌱",
+      "category": "rse",
+      "order": 18,
+      "parent_id": null
+    },
+    {
+      "id": "rm19",
+      "title": "Rédiger l’argumentaire impact",
+      "description": "En quoi le projet crée de la valeur au-delà du chiffre",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🌱",
+      "category": "rse",
+      "order": 19,
+      "parent_id": null
+    },
+    {
+      "id": "rm20",
+      "title": "Définir la politique de fin de vie",
+      "description": "Réemploi, recyclage, durabilité",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🌱",
+      "category": "rse",
+      "order": 20,
+      "parent_id": null
+    },
+    {
+      "id": "rm21",
+      "title": "Livrer un prototype fonctionnel",
+      "description": "La plus petite version qui prouve que ça marche",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🛠️",
+      "category": "produit",
+      "order": 21,
+      "parent_id": null
+    },
+    {
+      "id": "rm22",
+      "title": "Écrire les spécifications v1",
+      "description": "Ce que fait le produit, et ce qu’il ne fait pas",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🛠️",
+      "category": "produit",
+      "order": 22,
+      "parent_id": null
+    },
+    {
+      "id": "rm23",
+      "title": "Maquetter l’interface",
+      "description": "Les écrans ou étapes principales du parcours",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🛠️",
+      "category": "produit",
+      "order": 23,
+      "parent_id": null
+    },
+    {
+      "id": "rm24",
+      "title": "Tester en conditions réelles",
+      "description": "Confronté au terrain, pas au bureau",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "🛠️",
+      "category": "produit",
+      "order": 24,
+      "parent_id": null
+    },
+    {
+      "id": "rm25",
+      "title": "Définir les rôles manquants",
+      "description": "Fiches de poste des compétences qui font défaut",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "👥",
+      "category": "equipe",
+      "order": 25,
+      "parent_id": null
+    },
+    {
+      "id": "rm26",
+      "title": "Identifier un associé complémentaire",
+      "description": "Le profil qui couvre ce que tu ne sais pas faire",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "👥",
+      "category": "equipe",
+      "order": 26,
+      "parent_id": null
+    },
+    {
+      "id": "rm27",
+      "title": "Poser les rituels de travail",
+      "description": "Point hebdo, revue, rétrospective : le rythme",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "👥",
+      "category": "equipe",
+      "order": 27,
+      "parent_id": null
+    },
+    {
+      "id": "rm28",
+      "title": "Choisir la forme juridique",
+      "description": "Statuts et répartition du capital",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "⚖️",
+      "category": "juridique",
+      "order": 28,
+      "parent_id": null
+    },
+    {
+      "id": "rm29",
+      "title": "Déposer la marque",
+      "description": "Dans les classes pertinentes pour l’activité",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "⚖️",
+      "category": "juridique",
+      "order": 29,
+      "parent_id": null
+    },
+    {
+      "id": "rm30",
+      "title": "Rédiger contrat type et CGV",
+      "description": "Le cadre contractuel d’une vente ou d’un test",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "⚖️",
+      "category": "juridique",
+      "order": 30,
+      "parent_id": null
+    },
+    {
+      "id": "rm31",
+      "title": "Assurer la conformité RGPD",
+      "description": "Quelles données, combien de temps, pour qui",
+      "target": 1,
+      "progress": 0,
+      "completed": false,
+      "icon": "⚖️",
+      "category": "juridique",
+      "order": 31,
+      "parent_id": null
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "dlv1",
+      "title": "Exemple de livrable",
+      "dimension": "strategie",
+      "linked_objective_id": null,
+      "markdown": "# Exemple de livrable\n\nUn livrable rassemble en quelques slides le **résultat** d’un objectif.\n\n---\n\n## Comment ça marche\n\n- Une ligne contenant `---` sépare deux slides\n- Le panneau de droite affiche l’aperçu en direct\n- Le bouton **Présenter** passe en plein écran\n\n---\n\n## À vous de jouer\n\nSupprimez ce livrable et créez le vôtre depuis un objectif de la roadmap.\n",
+      "status": "draft",
+      "order": 1,
+      "updated": "2026-01-15"
+    }
+  ],
+  "pitch": {
+    "slides": []
+  },
+  "finance": {
+    "scenarios": [],
+    "activeScenarioId": null,
+    "activeAssumptions": null,
+    "actuals": {}
+  }
+}

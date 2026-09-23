@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Founder OS</title>
+  <link rel="stylesheet" href="css/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <style>
+    .nav-item-quit { color: var(--text-2) !important; }
+    .nav-item-quit:hover { background: rgba(231,76,60,.12) !important; color: #E74C3C !important; }
+    .nav-item-quit:hover svg { opacity: 1 !important; stroke: #E74C3C; }
+    .quit-screen {
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; background: var(--bg); color: var(--text-1);
+      font-family: "Inter", system-ui, sans-serif;
+    }
+    .quit-screen-inner { text-align: center; }
+    .quit-screen-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .quit-screen-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 6px; }
+    .quit-screen-sub { color: var(--text-2); font-size: .9rem; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Sidebar ── -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">Founder OS</div>
+      <div class="logo-sub">Système entrepreneurial</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Navigation</div>
+
+      <button class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+        </svg>
+        <span>Dashboard</span>
+      </button>
+
+      <button class="nav-item" data-view="tasks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4"/>
+          <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        </svg>
+        <span>Tâches</span>
+      </button>
+
+      <button class="nav-item" data-view="crm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        <span>CRM</span>
+      </button>
+
+      <button class="nav-item" data-view="interviews">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+        <span>Interviews</span>
+      </button>
+
+      <button class="nav-item" data-view="roadmap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+          <line x1="4" y1="22" x2="4" y2="15"/>
+        </svg>
+        <span>Roadmap</span>
+      </button>
+
+      <button class="nav-item" data-view="deliverables">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        <span>Livrables</span>
+      </button>
+
+      <button class="nav-item" data-view="calendar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span>Calendrier</span>
+      </button>
+
+      <button class="nav-item" data-view="finance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+        </svg>
+        <span>Finance</span>
+      </button>
+
+      <div class="nav-label" style="margin-top:8px">Système</div>
+
+      <button class="nav-item nav-item-archive" data-view="ideas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/>
+          <line x1="10" y1="12" x2="14" y2="12"/>
+        </svg>
+        <span>Archives — Idées</span>
+      </button>
+
+      <button class="nav-item" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        <span>Paramètres</span>
+      </button>
+
+      <button class="nav-item nav-item-quit" id="quit-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>Quitter</span>
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="phase-badge">
+        <span class="phase-dot"></span>
+        <span id="sidebar-phase">Discovery</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Contenu principal ── -->
+  <main>
+    <div id="main-content"></div>
+  </main>
+
+  <script type="module">
+    import { initDB, getMeta, getDB, exportDB, importDB, resetDB, toast, confirmModal } from './js/core.js';
+    import {
+      isBackupSupported, getBackupStatus, onBackupStatus,
+      linkBackupFile, unlinkBackupFile, reconnectBackup,
+    } from './js/backup.js';
+    import { renderDashboard }  from './js/dashboard.js';
+    import { renderFinance }    from './js/finance.js';
+    import { renderTasks }      from './js/tasks.js';
+    import { renderCRM }        from './js/crm.js';
+    import { renderInterviews } from './js/interviews.js';
+    import { renderIdeas }      from './js/ideas.js';
+    import { renderCalendar }   from './js/calendar.js';
+    import { renderRoadmap }    from './js/roadmap.js';
+    import { renderDeliverables } from './js/deliverables.js';
+
+    const content = document.getElementById('main-content');
+    let _currentView = 'dashboard';
+
+    // ── Routeur de vues ──────────────────────────────────────
+    const VIEWS = {
+      dashboard:  renderDashboard,
+      tasks:      renderTasks,
+      crm:        renderCRM,
+      interviews: renderInterviews,
+      ideas:      renderIdeas,
+      roadmap:    renderRoadmap,
+      deliverables: renderDeliverables,
+      calendar:   renderCalendar,
+      finance:    renderFinance,
+      settings:   renderSettings,
+    };
+
+    function navigate(view) {
+      if (!VIEWS[view]) return;
+      _currentView = view;
+
+      // Mettre à jour la nav active
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.view === view);
+      });
+
+      // Scroller en haut
+      content.scrollTop = 0;
+
+      VIEWS[view](content);
+
+      // Mettre à jour la phase dans la sidebar
+      const meta = getMeta();
+      document.getElementById('sidebar-phase').textContent = meta.phase;
+    }
+
+    // ── Événements de navigation ─────────────────────────────
+    document.querySelectorAll('.nav-item[data-view]').forEach(item => {
+      item.addEventListener('click', () => navigate(item.dataset.view));
+    });
+
+    // Navigation depuis les vues (boutons "Voir tout…")
+    document.addEventListener('navigate', e => navigate(e.detail));
+
+    // ── Vue Paramètres ───────────────────────────────────────
+    function renderSettings(container) {
+      container.innerHTML = `
+        <div class="page-header">
+          <div>
+            <div class="page-title">Paramètres</div>
+            <div class="page-subtitle">Configuration et données</div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-title">Données</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <button class="btn btn-secondary" id="export-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Exporter JSON
+            </button>
+            <label class="btn btn-secondary" style="cursor:pointer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Importer JSON
+              <input type="file" accept=".json" id="import-input" style="display:none">
+            </label>
+            <button class="btn btn-danger btn-sm" id="reset-btn">Réinitialiser les données</button>
+          </div>
+          <div class="form-hint" style="margin-top:12px">
+            L'export génère un fichier <code>founder-os-backup-[date].json</code>.<br>
+            L'import remplace toutes les données actuelles (irréversible).
+          </div>
+
+          <div class="divider"></div>
+          <div class="settings-title" style="font-size:.85rem">Sauvegarde automatique sur le PC</div>
+          <div id="backup-block"></div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-title">Méta — Phase et contexte</div>
+          <div class="form-group">
+            <label class="form-label">Phase actuelle</label>
+            <input class="form-input" id="s-phase" value="${getMeta().phase}" placeholder="Discovery, Validation, MVP…" style="max-width:320px">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Semaine</label>
+            <input class="form-input" id="s-week" type="number" min="1" value="${getMeta().week}" style="max-width:120px">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date de l'évaluation</label>
+            <input class="form-input" id="s-eval" type="date" value="${getMeta().eval_date || ''}" style="max-width:200px">
+            <div class="form-hint">Alimente le compte à rebours affiché sur le dashboard.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Citation de la semaine</label>
+            <input class="form-input" id="s-quote" value="${getMeta().quote}" placeholder="Citation inspirante…">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Auteur</label>
+            <input class="form-input" id="s-author" value="${getMeta().quote_author}" placeholder="Auteur" style="max-width:240px">
+          </div>
+          <button class="btn btn-primary" id="s-save-btn">Enregistrer</button>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-title">À propos</div>
+          <p style="font-size:.88rem;color:var(--text-2);line-height:1.7">
+            <strong>Founder OS</strong> — v1.0<br>
+            Système de gestion entrepreneuriale local.<br>
+            Zéro dépendance · Données stockées localement dans votre navigateur.
+          </p>
+        </div>
+      `;
+
+      // Export
+      container.querySelector('#export-btn').addEventListener('click', exportDB);
+
+      // Import
+      container.querySelector('#import-input').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const ok = importDB(ev.target.result);
+          if (ok) { toast('Données importées avec succès', 'success'); navigate('dashboard'); }
+          else toast('Fichier JSON invalide', 'error');
+        };
+        reader.readAsText(file);
+      });
+
+      // Reset
+      container.querySelector('#reset-btn').addEventListener('click', () => {
+        if (confirm('Réinitialiser toutes les données ? Cette action est irréversible.')) {
+          resetDB();
+        }
+      });
+
+      _renderBackupBlock(container);
+
+      // Sauvegarder meta
+      container.querySelector('#s-save-btn').addEventListener('click', () => {
+        import('./js/core.js').then(({ updateMeta }) => {
+          updateMeta({
+            phase: document.getElementById('s-phase').value.trim(),
+            week: Number(document.getElementById('s-week').value) || 1,
+            eval_date: document.getElementById('s-eval').value,
+            quote: document.getElementById('s-quote').value.trim(),
+            quote_author: document.getElementById('s-author').value.trim(),
+          });
+          toast('Paramètres sauvegardés', 'success');
+          document.getElementById('sidebar-phase').textContent = document.getElementById('s-phase').value.trim();
+        });
+      });
+    }
+
+    // ── Bloc sauvegarde automatique ──────────────────────────
+    let _backupUnsub = null;
+    let _backupTick  = null;
+
+    function _renderBackupBlock(container) {
+      const block = container.querySelector('#backup-block');
+      if (!block) return;
+
+      // Dégradation propre hors Chrome/Edge : pas d'erreur, juste une note
+      if (!isBackupSupported()) {
+        block.innerHTML = `<div class="form-hint">
+          Sauvegarde automatique disponible sur Chrome et Edge.
+          En attendant, utilisez l'export JSON ci-dessus.
+        </div>`;
+        return;
+      }
+
+      const draw = st => {
+        const live = container.querySelector('#backup-block');
+        if (!live) return;   // la vue a changé entre-temps
+        live.innerHTML = `
+          <div class="backup-row">
+            ${st.state === 'unlinked'
+              ? `<button class="btn btn-primary btn-sm" id="backup-link">Lier un fichier de sauvegarde</button>`
+              : `<span class="backup-file">📄 Fichier lié : <strong>${st.fileName || 'sauvegarde'}</strong></span>
+                 <button class="btn btn-ghost btn-sm" id="backup-unlink">Délier</button>`}
+            <span class="backup-state backup-state-${st.state}" id="backup-state">${_backupLabel(st)}</span>
+          </div>
+          <div class="form-hint" style="margin-top:10px">
+            Vos données sont écrites en continu dans ce fichier. Même si le cache du
+            navigateur est vidé, l'app les restaure depuis ce fichier au prochain lancement.
+            ${st.state === 'unlinked'
+              ? `<br>Conseil : choisissez <code>data/db.json</code> dans le dossier du projet — il est ignoré par git, donc jamais publié.`
+              : ''}
+          </div>`;
+
+        live.querySelector('#backup-link')?.addEventListener('click', async () => {
+          try { await linkBackupFile(getDB()); toast('Sauvegarde automatique activée', 'success'); }
+          catch (e) { if (e.name !== 'AbortError') toast('Impossible de lier le fichier', 'error'); }
+        });
+        live.querySelector('#backup-unlink')?.addEventListener('click', async () => {
+          await unlinkBackupFile();
+          toast('Fichier délié — le fichier sur le disque est conservé');
+        });
+        live.querySelector('#backup-state')?.addEventListener('click', async () => {
+          if (st.state !== 'permission' && st.state !== 'missing' && st.state !== 'error') return;
+          const after = await reconnectBackup(getDB());
+          toast(after.state === 'linked' ? 'Sauvegarde reconnectée' : 'Reconnexion refusée', after.state === 'linked' ? 'success' : 'error');
+        });
+      };
+
+      _backupUnsub?.();
+      _backupUnsub = onBackupStatus(draw);
+      clearInterval(_backupTick);
+      // Rafraîchit le « il y a X s » sans re-render complet
+      _backupTick = setInterval(() => {
+        const el = document.getElementById('backup-state');
+        if (!el) return;
+        const st = getBackupStatus();
+        if (st.state === 'linked') el.textContent = _backupLabel(st);
+      }, 5000);
+
+      draw(getBackupStatus());
+    }
+
+    function _backupLabel(st) {
+      switch (st.state) {
+        case 'unlinked':   return 'Aucun fichier lié';
+        case 'pending':    return '⏳ Sauvegarde…';
+        case 'writing':    return '⏳ Sauvegarde…';
+        case 'permission': return '⚠ Sauvegarde interrompue — cliquez pour reconnecter';
+        case 'missing':    return '⚠ Fichier introuvable — cliquez pour relier';
+        case 'error':      return '⚠ Erreur de sauvegarde — cliquez pour réessayer';
+        case 'linked':     return st.lastWrite ? `✅ Sauvegardé ${_ago(st.lastWrite)}` : '✅ Fichier lié';
+        default:           return '';
+      }
+    }
+
+    function _ago(ts) {
+      const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+      if (s < 5)  return "à l'instant";
+      if (s < 60) return `il y a ${s} s`;
+      const m = Math.round(s / 60);
+      if (m < 60) return `il y a ${m} min`;
+      return `il y a ${Math.round(m / 60)} h`;
+    }
+
+    // ── Quitter ──────────────────────────────────────────────
+    document.getElementById('quit-btn').addEventListener('click', () => {
+      confirmModal('Fermer Founder OS et arrêter le serveur local ?', async () => {
+        try { await fetch('/--quit'); } catch {}
+        // Tenter de fermer l'onglet (fonctionne si ouvert via script)
+        window.close();
+        // Fallback : écran d'arrêt
+        document.body.innerHTML = `
+          <div class="quit-screen">
+            <div class="quit-screen-inner">
+              <div class="quit-screen-icon">⏹</div>
+              <div class="quit-screen-title">Founder OS arrêté</div>
+              <div class="quit-screen-sub">Le serveur est éteint. Vous pouvez fermer cet onglet.</div>
+            </div>
+          </div>`;
+      }, 'Quitter');
+    });
+
+    // ── Boot ─────────────────────────────────────────────────
+    await initDB();
+    navigate('dashboard');
+  </script>
+</body>
+</html>

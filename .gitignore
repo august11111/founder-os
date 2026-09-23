@@ -1,0 +1,21 @@
+# Données locales personnelles — ne pas partager
+data/db.json
+# Fichiers de sauvegarde liés depuis l'app et exports JSON manuels,
+# où qu'ils soient posés dans le dossier du projet
+founder-os*.json
+
+# Paramètres locaux Claude Code
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Éditeurs
+.vscode/settings.json
+*.swp
+*.swo
+
+# Logs
+*.log
