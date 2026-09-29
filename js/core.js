@@ -10,7 +10,7 @@ const DB_KEY = 'founder_os_db';
 
 // Version du schéma de données — incrémentée à chaque changement de structure.
 // La migration correspondante est jouée dans _migrate(), qui est idempotente.
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 9;
 
 // ── Référentiel des 8 dimensions ────────────────────────────
 // Source de vérité unique : aucun module ne redéfinit cette liste.
@@ -145,7 +145,15 @@ function _migrate(s) {
 
   // v1 — champs contacts
   s.contacts.forEach(c => {
-    if (c.secteur  === undefined) c.secteur = '';
+    // v8 — le champ servait en pratique d'intitulé de poste, pas de secteur.
+    // Le secteur d'activité, lui, vit sur l'entité entreprise depuis la v6.
+    // v9 — contacts mis en favori
+    if (c.favorite === undefined) c.favorite = false;
+    if (c.poste === undefined) c.poste = c.secteur ?? '';
+    delete c.secteur;
+    // v8 — la date saisie à la main disparaît : le retard se mesure désormais
+    // sur la dernière interaction réellement enregistrée.
+    delete c.last_contact;
     if (!c.interactions)          c.interactions = [];
     if (c.email    === undefined) c.email = '';
     if (c.phone    === undefined) c.phone = '';
@@ -235,8 +243,86 @@ function _migrate(s) {
     }
   });
 
+  // v6 — l'entreprise devient une entité à part entière, avec un socle commun
+  // à tout business et un sac `custom` pour les colonnes propres à chacun.
+  if (!Array.isArray(s.companies)) s.companies = [];
+  s.companies.forEach(co => {
+    COMPANY_FIELDS.forEach(f => { if (co[f] === undefined) co[f] = ''; });
+    if (co.parent_id === undefined) co.parent_id = null;
+    if (!Array.isArray(co.sources))  co.sources = [];
+    if (!co.custom || typeof co.custom !== 'object') co.custom = {};
+    if (co.order === undefined) co.order = 0;
+  });
+  s.contacts.forEach(c => { if (c.company_id === undefined) c.company_id = null; });
+
+  // Les entreprises n'existaient qu'en texte libre sur les contacts : on crée
+  // une fiche par nom distinct et on rattache. Le texte reste sur le contact,
+  // le CRM continue de l'afficher tel quel.
+  if (!s.meta.companies_migrated) {
+    const byKey = new Map();
+    s.companies.forEach(co => byKey.set(normalizeText(co.name), co));
+    s.contacts.forEach(c => {
+      const name = (c.company || '').trim();
+      if (!name) return;
+      const key = normalizeText(name);
+      let co = byKey.get(key);
+      if (!co) { co = _newCompany({ name }); s.companies.push(co); byKey.set(key, co); }
+      if (!c.company_id) c.company_id = co.id;
+    });
+    s.meta.companies_migrated = true;
+  }
+
+  // v7 — interviews : 3 statuts, et séparation du brut et de l'analysé.
+  // Une interview n'existe que pour quelqu'un qu'on va réellement interviewer ;
+  // « à contacter » relève du CRM et de la prospection, pas d'ici.
+  s.interviews.forEach(iv => {
+    iv.status = INTERVIEW_STATUS_MAP[iv.status] || iv.status || INTERVIEW_STATUSES[0];
+    if (iv.transcription === undefined) iv.transcription = '';
+    if (iv.synthese === undefined) {
+      // L'ancien recap (analyse markdown) et les anciennes notes (résumé)
+      // décrivaient tous deux l'analyse : on les conserve en les concaténant.
+      iv.synthese = [iv.recap, iv.notes].map(x => (x || '').trim()).filter(Boolean).join('\n\n---\n\n');
+    }
+    delete iv.recap;
+    delete iv.notes;
+    if (!Array.isArray(iv.verbatims))   iv.verbatims = [];
+    if (!Array.isArray(iv.pain_points)) iv.pain_points = [];
+  });
+
+  // Couleur signature : vide = l'orange de la marque, défini dans le CSS.
+  // Un autre utilisateur peut choisir la sienne sans toucher au code.
+  if (s.meta.accent === undefined) s.meta.accent = '';
   if (s.meta.eval_date === undefined) s.meta.eval_date = '';
+  if (s.meta.daily_request_goal === undefined) s.meta.daily_request_goal = 10;
+  // Correspondance priorité → quota suggéré, entièrement définie par l'utilisateur
+  if (!s.meta.quota_by_priority || typeof s.meta.quota_by_priority !== 'object') {
+    s.meta.quota_by_priority = {};
+  }
+  if (s.meta.default_quota === undefined) s.meta.default_quota = 3;
+  if (s.meta.large_quota === undefined)   s.meta.large_quota = 5;
   s.meta.schema_version = SCHEMA_VERSION;
+}
+
+// Une interview ne naît qu'une fois l'entretien décroché : d'où trois étapes.
+export const INTERVIEW_STATUSES = ['Planifiée', 'Réalisée', 'Analysée'];
+
+const INTERVIEW_STATUS_MAP = {
+  'À contacter': 'Planifiée',
+  'Confirmé':    'Planifiée',
+  'Réalisé':     'Réalisée',
+  'Analysé':     'Analysée',
+};
+
+// Socle fixe : les champs que tout business partage. Tout le reste va dans `custom`.
+export const COMPANY_FIELDS = [
+  'ref', 'name', 'group', 'website', 'city', 'region', 'sector', 'activities',
+  'priority', 'score', 'status', 'target_role', 'email', 'phone', 'size', 'note',
+];
+
+function _newCompany(patch = {}) {
+  const co = { id: uid('co'), parent_id: null, sources: [], custom: {}, order: 0, updated: todayStr() };
+  COMPANY_FIELDS.forEach(f => { co[f] = ''; });
+  return { ...co, ...patch, id: patch.id || co.id };
 }
 
 // Les 4 habitudes historiques, converties en tâches récurrentes quotidiennes
@@ -295,10 +381,34 @@ export function deleteTask(id) {
 }
 
 export function saveContact(contact) {
-  const idx = _state.contacts.findIndex(c => c.id === contact.id);
-  if (idx >= 0) _state.contacts[idx] = contact;
-  else _state.contacts.push({ ...contact, id: uid('c') });
+  const item = _linkCompany({ ...contact });
+  const idx = _state.contacts.findIndex(c => c.id === item.id);
+  if (idx >= 0) _state.contacts[idx] = item;
+  else _state.contacts.push({ ...item, id: item.id || uid('c') });
   _persist(); _notify();
+  return item;
+}
+
+// Le nom d'entreprise est saisi librement (CRM, calendrier) : on le résout vers
+// une fiche, créée au besoin. Sans ce rattachement, le contact resterait
+// invisible du module Prospection, qui travaille sur company_id.
+function _linkCompany(contact) {
+  const name = (contact.company || '').trim();
+  if (!name) { contact.company_id = null; return contact; }
+
+  const existing = findCompanyByName(name);
+  if (existing) {
+    contact.company_id = existing.id;
+    contact.company = existing.name;      // on retient la graphie de la fiche
+    return contact;
+  }
+
+  if (!_state.companies) _state.companies = [];
+  const created = _newCompany({ name, status: 'À contacter' });
+  created.order = _state.companies.length ? Math.max(..._state.companies.map(c => c.order || 0)) + 1 : 1;
+  _state.companies.push(created);
+  contact.company_id = created.id;
+  return contact;
 }
 
 export function deleteContact(id) {
@@ -309,23 +419,169 @@ export function deleteContact(id) {
 // Liste des entreprises distinctes, dérivée des contacts : pas de table
 // parallèle à maintenir. Regroupe les variantes de casse/accents sous le
 // premier libellé rencontré. Retourne [{ name, count }] trié par nom.
-export function getCompanies() {
-  const byKey = new Map();
+// ── Entreprises ─────────────────────────────────────────────
+export function getCompaniesList()   { return _state.companies || []; }
+export function getCompanyById(id)   { return getCompaniesList().find(c => c.id === id); }
+export function newCompany(patch)    { return _newCompany(patch); }
+
+export function findCompanyByName(name, pool = getCompaniesList()) {
+  const key = normalizeText(name);
+  if (!key) return null;
+  return pool.find(c => normalizeText(c.name) === key) || null;
+}
+
+export function findCompanyByRef(ref, pool = getCompaniesList()) {
+  const key = (ref ?? '').toString().trim();
+  if (!key) return null;
+  return pool.find(c => (c.ref ?? '').toString().trim() === key) || null;
+}
+
+export function saveCompany(co) {
+  if (!_state.companies) _state.companies = [];
+  const item = { ..._newCompany(), ...co, id: co.id || uid('co'), updated: todayStr() };
+  if (_wouldCycle(item.id, item.parent_id)) item.parent_id = null;
+  const idx = _state.companies.findIndex(c => c.id === item.id);
+  if (idx >= 0) _state.companies[idx] = item;
+  else {
+    item.order = _state.companies.length ? Math.max(..._state.companies.map(c => c.order || 0)) + 1 : 1;
+    _state.companies.push(item);
+  }
+  // Le contact garde le nom en clair : le CRM l'affiche sans résoudre la fiche
+  getContacts().forEach(c => { if (c.company_id === item.id) c.company = item.name; });
+  _persist(); _notify();
+  return item;
+}
+
+// Une entreprise ne peut pas devenir sa propre ancêtre
+function _wouldCycle(id, parentId, pool = getCompaniesList()) {
+  let cur = parentId;
+  const seen = new Set();
+  while (cur) {
+    if (cur === id || seen.has(cur)) return true;
+    seen.add(cur);
+    cur = (pool.find(c => c.id === cur) || {}).parent_id || null;
+  }
+  return false;
+}
+
+export function deleteCompany(id) {
+  _state.companies = getCompaniesList().filter(c => c.id !== id);
+  // Les enfants remontent d'un cran, les contacts sont conservés et déliés
+  getCompaniesList().forEach(c => { if (c.parent_id === id) c.parent_id = null; });
+  getContacts().forEach(c => { if (c.company_id === id) c.company_id = null; });
+  _persist(); _notify();
+}
+
+// Réaffecte les contacts du doublon vers le canonique, puis supprime le doublon
+export function mergeCompanies(canonicalId, duplicateId) {
+  const canonical = getCompanyById(canonicalId);
+  const dup = getCompanyById(duplicateId);
+  if (!canonical || !dup || canonicalId === duplicateId) return null;
+  // Le canonique récupère ce qu'il n'a pas encore renseigné
+  COMPANY_FIELDS.forEach(f => { if (!canonical[f] && dup[f]) canonical[f] = dup[f]; });
+  canonical.sources = [...new Set([...(canonical.sources || []), ...(dup.sources || [])])];
+  canonical.custom = { ...(dup.custom || {}), ...(canonical.custom || {}) };
   getContacts().forEach(c => {
-    const name = (c.company || '').trim();
-    if (!name) return;
-    const key = normalizeText(name);
-    if (byKey.has(key)) byKey.get(key).count++;
-    else byKey.set(key, { name, count: 1 });
+    if (c.company_id === duplicateId) { c.company_id = canonicalId; c.company = canonical.name; }
   });
-  return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  getCompaniesList().forEach(c => { if (c.parent_id === duplicateId) c.parent_id = canonicalId; });
+  _state.companies = getCompaniesList().filter(c => c.id !== duplicateId);
+  _persist(); _notify();
+  return canonical;
+}
+
+export function getContactsForCompany(id, contacts = getContacts()) {
+  return contacts.filter(c => c.company_id === id);
+}
+
+// Compat CRM : mêmes { name, count } qu'avant, mais adossés aux vraies fiches
+export function getCompanies() {
+  const contacts = getContacts();
+  return getCompaniesList()
+    .map(co => ({ id: co.id, name: co.name, count: getContactsForCompany(co.id, contacts).length }))
+    .filter(c => c.name)
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+}
+
+// ── Dérivés purs (testables hors du store) ──────────────────
+
+// Membres du même groupe : par arbre parent_id, et par libellé `group` qui sert
+// de clé transverse même quand aucune fiche « tête de groupe » n'existe.
+export function getGroupMembers(company, companies) {
+  if (!company) return [];
+  const root = _rootOf(company, companies);
+  const inTree = companies.filter(c => _rootOf(c, companies).id === root.id);
+  const label = normalizeText(company.group);
+  const byLabel = label ? companies.filter(c => normalizeText(c.group) === label) : [];
+  const seen = new Set();
+  return [...inTree, ...byLabel].filter(c => (seen.has(c.id) ? false : seen.add(c.id)));
+}
+
+function _rootOf(company, companies) {
+  let cur = company;
+  const seen = new Set();
+  while (cur && cur.parent_id && !seen.has(cur.id)) {
+    seen.add(cur.id);
+    const next = companies.find(c => c.id === cur.parent_id);
+    if (!next) break;
+    cur = next;
+  }
+  return cur;
+}
+
+// Couverture d'un groupe : combien de personnes touchées sur l'ensemble.
+// « Touché » = au moins une interaction enregistrée.
+export function computeGroupCoverage(company, companies, contacts) {
+  const members = getGroupMembers(company, companies);
+  const ids = new Set(members.map(c => c.id));
+  const linked = contacts.filter(c => ids.has(c.company_id));
+  const touched = linked.filter(c => (c.interactions || []).length > 0);
+  return {
+    companies: members.length,
+    contacts: linked.length,
+    touched: touched.length,
+    companiesTouched: new Set(touched.map(c => c.company_id)).size,
+  };
+}
+
+// Nombre de demandes de connexion envoyées un jour donné (par interaction,
+// pas par contact : c'est un volume de gestes quotidiens).
+export function countRequestsOn(contacts, dateStr) {
+  return (contacts || []).reduce((n, c) =>
+    n + (c?.interactions || []).filter(i => i.type === 'li_demande' && i.date === dateStr).length, 0);
+}
+
+// Quota suggéré, dérivé sans imposer de schéma : la taille si elle est
+// parlante, sinon la correspondance priorité définie par l'utilisateur.
+export function suggestQuota(company, config = {}) {
+  const { defaultQuota = 3, largeQuota = 5, byPriority = {} } = config;
+  if (!company) return defaultQuota;
+
+  const size = normalizeText(company.size);
+  if (size) {
+    const asNumber = Number(String(company.size).replace(',', '.'));
+    if (Number.isFinite(asNumber) && asNumber > 0) return Math.max(1, Math.round(asNumber));
+    if (/grand|large|multi|oui|yes|major|national/.test(size)) return largeQuota;
+    if (/petit|small|mono|non|no|local/.test(size)) return defaultQuota;
+  }
+
+  const prio = (company.priority ?? '').toString().trim();
+  for (const [key, value] of Object.entries(byPriority)) {
+    if (normalizeText(key) === normalizeText(prio)) {
+      const n = Number(value);
+      if (Number.isFinite(n) && n > 0) return Math.round(n);
+    }
+  }
+  return defaultQuota;
 }
 
 export function saveInterview(interview) {
-  const idx = _state.interviews.findIndex(i => i.id === interview.id);
-  if (idx >= 0) _state.interviews[idx] = interview;
-  else _state.interviews.push({ ...interview, id: uid('int') });
+  const item = { ...interview, id: interview.id || uid('int') };
+  const idx = _state.interviews.findIndex(i => i.id === item.id);
+  if (idx >= 0) _state.interviews[idx] = item;
+  else _state.interviews.push(item);
   _persist(); _notify();
+  return item;
 }
 
 export function deleteInterview(id) {
@@ -468,6 +724,119 @@ function _syncChildrenCategory(parentId) {
   getRoadmap().forEach(r => { if (r.parent_id === parentId) r.category = parent.category; });
 }
 
+// ── Interactions : ordre de récence ─────────────────────────
+// Les interactions ne portent qu'une date, sans heure : à date égale, seul
+// l'ordre de saisie départage. Sans ce second critère, le tri stable de
+// JavaScript conserve l'ordre du tableau et c'est la PLUS ANCIENNE des
+// interactions du jour qui ressortait comme « dernière ».
+export function sortInteractionsByRecency(interactions = []) {
+  return interactions
+    .map((it, idx) => ({ it, idx }))
+    .sort((a, b) => (b.it.date || '').localeCompare(a.it.date || '') || b.idx - a.idx)
+    .map(x => x.it);
+}
+
+export function getLastInteraction(contact) {
+  const list = contact?.interactions || [];
+  return list.length ? sortInteractionsByRecency(list)[0] : null;
+}
+
+// ── Étape courante d'un contact ─────────────────────────────
+// Même logique monotone que l'entonnoir : on cherche l'étape la plus avancée
+// atteinte, de la plus avancée à la moins avancée.
+// `rdv_annule` est volontairement absent : un RDV annulé fait retomber le
+// contact à son étape précédente, donc il redevient relançable.
+const STAGE_LABELS = {
+  rdv:     'RDV',
+  repondu: 'A répondu',
+  message: 'Message envoyé',
+  email:   'Email envoyé',
+  accepte: 'Acceptée — à messager',
+  demande: 'Demande envoyée',
+  aucune:  'Aucune',
+};
+
+export const CONTACT_STAGES = Object.entries(STAGE_LABELS).map(([key, label]) => ({ key, label }));
+
+export function getContactStage(contact) {
+  const inter = contact?.interactions || [];
+  const stage = key => ({ key, label: STAGE_LABELS[key] });
+  if (!inter.length) return stage('aucune');
+  const has = (...types) => inter.some(i => types.includes(i.type));
+
+  if (has('rdv_fixe', 'rdv_passe', 'appel_passe')) return stage('rdv');
+  if (has('li_msg_repondu', 'email_repondu'))      return stage('repondu');
+  if (has('li_msg_envoye'))                        return stage('message');
+  if (has('email_envoye'))                         return stage('email');
+  if (has('li_accepte'))                           return stage('accepte');
+  if (has('li_demande'))                           return stage('demande');
+  return stage('aucune');
+}
+
+// ── Contacts à relancer ─────────────────────────────────────
+// Seuils d'attente par étape, en jours. Au-delà, le contact est considéré
+// comme bloqué et remonte dans la liste à relancer.
+export const FOLLOWUP_AFTER_DAYS = {
+  demande: 7,   // en attente d'acceptation
+  message: 4,   // en attente de réponse
+  email:   4,
+};
+
+function _daysBetween(from, to) {
+  const a = new Date(from + 'T00:00:00');
+  const b = new Date(to + 'T00:00:00');
+  if (isNaN(a) || isNaN(b)) return 0;
+  return Math.round((b - a) / 86400000);
+}
+
+// Relance programmée encore en attente et dont la date est passée
+function _overdueFollowup(contact, today) {
+  const due = (contact?.interactions || [])
+    .map(i => i.next_followup)
+    .filter(d => typeof d === 'string' && d && d < today)
+    .sort();
+  return due[0] || null;   // la plus ancienne échéance dépassée
+}
+
+// Fonction pure : seule source de vérité de « à relancer ». Retourne les
+// contacts concernés, du plus en retard au moins, avec la raison.
+export function getContactsToFollowUp(contacts = [], today = todayStr()) {
+  const out = [];
+
+  (contacts || []).forEach(contact => {
+    const stage = getContactStage(contact);
+    const overdue = _overdueFollowup(contact, today);
+
+    // Une relance programmée échue prime, quelle que soit l'étape
+    if (overdue) {
+      out.push({
+        contact, stage, days: _daysBetween(overdue, today),
+        reason: 'followup', dueDate: overdue,
+        label: `Relance prévue le ${fmtDate(overdue)} — échue`,
+      });
+      return;
+    }
+
+    // Sinon, seules les étapes d'attente peuvent être relancées. À l'étape
+    // « acceptée », la balle est dans ton camp : ce n'est pas une relance.
+    const threshold = FOLLOWUP_AFTER_DAYS[stage.key];
+    if (!threshold) return;
+    const last = getLastInteraction(contact);
+    if (!last?.date) return;
+
+    const waited = _daysBetween(last.date, today);
+    if (waited <= threshold) return;
+    out.push({
+      contact, stage, days: waited, reason: 'waiting', dueDate: null,
+      label: stage.key === 'demande'
+        ? `Demande sans réponse · ${waited} j`
+        : `Message sans réponse · ${waited} j`,
+    });
+  });
+
+  return out.sort((a, b) => b.days - a.days || a.contact.name.localeCompare(b.contact.name, 'fr'));
+}
+
 // ── Statistiques de prospection ─────────────────────────────
 // Fonction pure : seule source de vérité de l'entonnoir, la vue ne fait
 // qu'afficher. On compte par CONTACT atteint et non par événement brut — un
@@ -494,11 +863,20 @@ export function getProspectionStats(contacts = [], { sinceDays } = {}) {
     if (!inter.length) return;
     const has = (...types) => inter.some(i => types.includes(i.type));
 
-    if (has('li_demande'))              demandes++;
-    if (has('li_accepte'))              acceptations++;
-    // Décrocher l'échange est ce qui compte : qu'il soit fixé, tenu, annulé ou
-    // remplacé par un appel, le prospect a accepté de parler.
-    if (has(...RDV_TYPES))              rdv++;
+    // Entonnoir monotone : atteindre une étape implique toutes les précédentes.
+    // On raisonne en « étape la plus avancée atteinte », pas en présence d'un
+    // type isolé — sinon loguer « message envoyé » sans repasser par « connexion
+    // acceptée » ferait disparaître l'acceptation des compteurs.
+    // Décrocher l'échange : qu'il soit fixé, tenu, annulé ou remplacé par un
+    // appel, le prospect a accepté de parler.
+    const atteintRdv     = has(...RDV_TYPES);
+    const atteintAccepte = has('li_accepte', 'li_msg_envoye', 'li_msg_repondu') || atteintRdv;
+    const atteintDemande = has('li_demande') || atteintAccepte;
+
+    if (atteintDemande) demandes++;
+    if (atteintAccepte) acceptations++;
+    if (atteintRdv)     rdv++;
+
     if (has('li_msg_envoye'))           messagesEnvoyes++;
     if (has('email_envoye'))            emailsEnvoyes++;
     relances += inter.filter(i => i.type === 'relance').length;
@@ -792,8 +1170,8 @@ function _emptyDB() {
       phase: 'Discovery', week: 1, focus_today: '', quote: '', quote_author: '',
       eval_date: '', schema_version: SCHEMA_VERSION, habits_migrated: true, updated: todayStr(),
     },
-    tasks: [], contacts: [], interviews: [], ideas: [], habits: [], insights: [], calendar_events: [], roadmap: [],
-    deliverables: [], pitch: { slides: [] },
+    tasks: [], contacts: [], companies: [], interviews: [], ideas: [], habits: [], insights: [],
+    calendar_events: [], roadmap: [], deliverables: [], pitch: { slides: [] },
     finance: { scenarios: [], activeScenarioId: null, activeAssumptions: null, actuals: {} }
   };
 }
@@ -952,6 +1330,57 @@ export function closeModal() {
 }
 
 function _escHandler(e) { if (e.key === 'Escape') closeModal(); }
+
+// ── Couleur d'accent personnalisable ─────────────────────────
+// L'orange de la marque vit dans le CSS. Si l'utilisateur en choisit une autre,
+// on surcharge les jetons sur :root en dérivant les variantes, pour que rien
+// n'ait besoin de connaître la couleur en dur.
+export function applyAccent(hex) {
+  const root = document.documentElement;
+  const tokens = ['--accent', '--accent-strong', '--accent-soft', '--accent-text', '--accent-rgb'];
+  if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) {
+    tokens.forEach(t => root.style.removeProperty(t));   // retour à la marque
+    return;
+  }
+  const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const shade = pct => '#' + rgb.map(v =>
+    Math.max(0, Math.round(v * (1 - pct))).toString(16).padStart(2, '0')).join('');
+
+  root.style.setProperty('--accent', hex);
+  root.style.setProperty('--accent-strong', shade(0.12));
+  root.style.setProperty('--accent-text', shade(0.22));
+  root.style.setProperty('--accent-soft', `rgba(${rgb.join(',')},.13)`);
+  root.style.setProperty('--accent-rgb', rgb.join(','));
+}
+
+// ── Markdown assaini ─────────────────────────────────────────
+// marked rend le HTML brut tel quel : on nettoie le résultat avant insertion
+// pour qu'un <script> ou un onclick collé depuis ailleurs ne s'exécute pas.
+const _FORBIDDEN_TAGS = ['script', 'iframe', 'object', 'embed', 'link', 'meta', 'style', 'form', 'base'];
+
+export function renderMarkdown(md) {
+  if (!md || !md.trim()) return '';
+  const html = window.marked ? window.marked.parse(md) : `<pre>${escapeHTML(md)}</pre>`;
+  const tpl = document.createElement('div');
+  tpl.innerHTML = html;
+  tpl.querySelectorAll(_FORBIDDEN_TAGS.join(',')).forEach(n => n.remove());
+  tpl.querySelectorAll('*').forEach(node => {
+    [...node.attributes].forEach(attr => {
+      const name = attr.name.toLowerCase();
+      const value = (attr.value || '').replace(/\s/g, '').toLowerCase();
+      if (name.startsWith('on')) node.removeAttribute(attr.name);
+      else if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) node.removeAttribute(attr.name);
+    });
+  });
+  return tpl.innerHTML;
+}
+
+export function escapeHTML(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 // ── Helpers texte ────────────────────────────────────────────
 export function truncate(str, n = 80) {

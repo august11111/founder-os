@@ -62,7 +62,14 @@ function _draw(scores) {
 
   const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const grid = dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.08)';
-  const text = dark ? '#B0B0A6' : '#4A4A4A';
+  const text = dark ? '#A0A2A8' : '#6E7079';
+
+  // Le polygone « où tu en es » suit la couleur d'accent du thème, pas une
+  // valeur codée en dur : la grille et les axes restent en gris de bordure.
+  const css = window.getComputedStyle?.(document.documentElement);
+  const token = (name, fallback) => (css?.getPropertyValue(name) || '').trim() || fallback;
+  const accent = token('--accent', '#E4682E');
+  const accentRgb = token('--accent-rgb', '228,104,46');
 
   C.defaults.font.family = "'DM Sans', system-ui, sans-serif";
 
@@ -74,11 +81,11 @@ function _draw(scores) {
         label: 'Score',
         data: DIMENSIONS.map(d => scores[d.key]),
         fill: true,
-        backgroundColor: 'rgba(55,138,221,.18)',
-        borderColor: '#378ADD',
+        backgroundColor: `rgba(${accentRgb},.16)`,
+        borderColor: accent,
         borderWidth: 2,
         pointBackgroundColor: DIMENSIONS.map(d => d.color),
-        pointBorderColor: dark ? '#141412' : '#FFFFFF',
+        pointBorderColor: dark ? '#0F0F11' : '#FFFFFF',
         pointBorderWidth: 2,
         pointRadius: 5,
         pointHoverRadius: 7,

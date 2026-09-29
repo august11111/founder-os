@@ -1,33 +1,47 @@
 /* ============================================================
-   FOUNDER OS — Interviews : Kanban + recap panel + CRUD
+   FOUNDER OS — Interviews : liste + transcription / synthèse
    ============================================================ */
 
 import {
-  getInterviews, saveInterview, deleteInterview, getInterviewById,
-  getContacts, getContactById, getIdeas,
+  INTERVIEW_STATUSES, getInterviews, saveInterview, deleteInterview, getInterviewById,
+  getContacts, getContactById,
   openModal, closeModal, confirmModal, starsHTML, fmtDate,
-  toast, parseTagsInput, tagsToInput, uid
+  toast, parseTagsInput, tagsToInput, renderMarkdown, escapeHTML as _esc,
 } from './core.js';
 
-const STATUTS = ['À contacter', 'Confirmé', 'Réalisé', 'Analysé'];
-
 const STATUS_COLORS = {
-  'À contacter': 'badge-q3',
-  'Confirmé':    'badge-q2',
-  'Réalisé':     'badge-ea',
-  'Analysé':     'badge-actif',
+  'Planifiée': 'badge-q2',
+  'Réalisée':  'badge-ea',
+  'Analysée':  'badge-actif',
 };
 
+let _openId    = null;
+let _tab       = 'transcription';   // 'transcription' | 'synthese'
+let _filter    = 'Toutes';
+let _editSynth = false;             // synthèse en mode édition
+let _timer     = null;
+
 export function renderInterviews(container) {
-  const interviews = getInterviews();
+  if (_openId && !getInterviewById(_openId)) _openId = null;
+  if (_openId) return _renderDetail(container);
+  _renderList(container);
+}
+
+// ── Liste ────────────────────────────────────────────────────
+function _renderList(container) {
+  const all = getInterviews();
+  const done     = all.filter(i => i.status === 'Réalisée').length;
+  const analyzed = all.filter(i => i.status === 'Analysée').length;
+
+  const rows = all
+    .filter(i => _filter === 'Toutes' || i.status === _filter)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   container.innerHTML = `
     <div class="page-header">
       <div>
         <div class="page-title">Interviews</div>
-        <div class="page-subtitle">
-          ${interviews.filter(i => i.status === 'Analysé').length} analysées
-        </div>
+        <div class="page-subtitle">${all.length} au total · ${done} réalisée${done > 1 ? 's' : ''} · ${analyzed} analysée${analyzed > 1 ? 's' : ''}</div>
       </div>
       <div class="page-actions">
         <button class="btn btn-primary" id="add-interview-btn">
@@ -37,265 +51,293 @@ export function renderInterviews(container) {
       </div>
     </div>
 
-    <div class="iv-layout">
-      <!-- Kanban -->
-      <div class="kanban-board">
-        ${STATUTS.map(status => {
-          const cards = interviews.filter(i => i.status === status);
-          return `
-            <div class="kanban-column" data-status="${status}">
-              <div class="kanban-col-header">
-                <span class="kanban-col-title">${status}</span>
-                <span class="kanban-col-count">${cards.length}</span>
-              </div>
-              ${cards.map(i => _kanbanCard(i)).join('')}
-              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px;justify-content:center" data-add-status="${status}">
-                + Ajouter
-              </button>
-            </div>`;
-        }).join('')}
-      </div>
-
-      <!-- Recap panel (hidden by default, filled on card click) -->
-      <div class="iv-recap-panel" id="iv-recap-panel" style="display:none"></div>
+    <div class="filter-bar">
+      <span style="font-size:.8rem;color:var(--text-3);font-weight:600">Statut :</span>
+      ${['Toutes', ...INTERVIEW_STATUSES].map(s => `
+        <button class="filter-chip ${_filter === s ? 'active' : ''}" data-fiv="${s}">${s}</button>
+      `).join('')}
     </div>
+
+    ${rows.length ? `
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="crm-table">
+          <thead><tr>
+            <th>Contact</th><th>Entreprise</th><th>Date</th>
+            <th>Statut</th><th>Early Adopter</th><th>Contenu</th>
+          </tr></thead>
+          <tbody>${rows.map(_rowHTML).join('')}</tbody>
+        </table>
+      </div>`
+    : `<div class="empty-state">
+        <p>${all.length ? 'Aucune interview avec ce statut' : 'Aucune interview pour l\'instant'}</p>
+        ${all.length ? '' : `<p style="margin-top:8px">Une interview se crée pour quelqu'un que tu vas réellement
+          interviewer. Les personnes à contacter vivent dans le CRM et la prospection.</p>`}
+      </div>`}
   `;
 
-  _bindInterviews(container);
+  _bindList(container);
 }
 
-function _kanbanCard(interview) {
-  const contact = getContactById(interview.contact_id);
-  // pain_points et hypothesis_validated conservés dans le modèle, masqués de la carte
-  // const painTags = (interview.pain_points || []).slice(0, 3)
-  //   .map(p => `<span class="pain-tag">${p}</span>`).join('');
-
+function _rowHTML(iv) {
+  const contact = getContactById(iv.contact_id);
+  const hasT = (iv.transcription || '').trim().length > 0;
+  const hasS = (iv.synthese || '').trim().length > 0;
   return `
-    <div class="kanban-card" data-id="${interview.id}">
-      <div class="kanban-card-name">${contact ? contact.name : '—'}</div>
-      <div class="kanban-card-date">
-        ${interview.date ? fmtDate(interview.date) : 'Date à fixer'}
-        ${contact ? ` · <span style="font-size:.72rem;color:var(--text-3)">${contact.company}</span>` : ''}
-      </div>
-      ${interview.ea_score > 0 ? `<div class="stars" style="margin-bottom:6px">${starsHTML(interview.ea_score)}</div>` : ''}
-      <!-- pain tags masqués : <div class="kanban-card-tags">${(interview.pain_points||[]).slice(0,3).map(p=>`<span class="pain-tag">${p}</span>`).join('')}</div> -->
-      <!-- hypothesis badge masqué : ${interview.hypothesis_validated ? '✓ Hypothèse validée' : ''} -->
-    </div>`;
+    <tr data-iv="${iv.id}">
+      <td><div class="contact-name">${_esc(contact ? contact.name : '—')}</div></td>
+      <td>${contact && contact.company ? `<span class="company-cell">${_esc(contact.company)}</span>` : '<span style="color:var(--text-3)">—</span>'}</td>
+      <td>${iv.date ? fmtDate(iv.date) : '<span style="color:var(--text-3)">à fixer</span>'}</td>
+      <td><span class="badge ${STATUS_COLORS[iv.status] || 'badge-q3'}">${_esc(iv.status)}</span></td>
+      <td>${iv.ea_score > 0 ? `<span class="stars">${starsHTML(iv.ea_score)}</span>` : '<span style="color:var(--text-3)">—</span>'}</td>
+      <td>
+        <span class="iv-dot ${hasT ? 'on' : ''}" title="Transcription">T</span>
+        <span class="iv-dot ${hasS ? 'on' : ''}" title="Synthèse">S</span>
+      </td>
+    </tr>`;
 }
 
-function _bindInterviews(container) {
-  // Clic sur card → modale d'édition + recap panel en même temps
-  container.querySelectorAll('.kanban-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const interview = getInterviewById(card.dataset.id);
-      if (interview) {
-        openInterviewModal(interview, container);
-        _openRecapPanel(interview, container);
-      }
-    });
-  });
-
-  // Bouton ajouter par colonne
-  container.querySelectorAll('[data-add-status]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      openInterviewModal(null, container, btn.dataset.addStatus);
-    });
-  });
-
-  // Bouton principal
-  container.querySelector('#add-interview-btn').addEventListener('click', () => {
-    openInterviewModal(null, container);
-  });
+function _bindList(container) {
+  container.querySelectorAll('[data-fiv]').forEach(b =>
+    b.addEventListener('click', () => { _filter = b.dataset.fiv; renderInterviews(container); }));
+  container.querySelectorAll('tr[data-iv]').forEach(tr =>
+    tr.addEventListener('click', () => { _openId = tr.dataset.iv; _tab = 'transcription'; _editSynth = false; renderInterviews(container); }));
+  container.querySelector('#add-interview-btn').addEventListener('click', () => openInterviewModal(null, container));
 }
 
-// ── Recap Panel ─────────────────────────────────────────────
+// ── Détail : transcription et synthèse ───────────────────────
+function _renderDetail(container) {
+  const iv = getInterviewById(_openId);
+  const contact = getContactById(iv.contact_id);
 
-function _openRecapPanel(interview, container) {
-  const panel = container.querySelector('#iv-recap-panel');
-  panel.style.display = '';
-  _renderRecapView(interview, container, panel);
-}
-
-function _renderRecapView(interview, container, panel) {
-  const contact = getContactById(interview.contact_id);
-  const recap   = interview.recap || '';
-  const hasRecap = recap.trim().length > 0;
-
-  let renderedMarkdown;
-  if (hasRecap) {
-    renderedMarkdown = window.marked
-      ? window.marked.parse(recap)
-      : `<pre style="white-space:pre-wrap;font-size:.82rem">${recap}</pre>`;
-  } else {
-    renderedMarkdown = `<p class="iv-recap-empty">Aucun recap. Cliquez sur "Éditer" pour en ajouter un.</p>`;
-  }
-
-  panel.innerHTML = `
-    <div class="iv-recap-header">
+  container.innerHTML = `
+    <div class="page-header">
       <div>
-        <div class="iv-recap-name">${contact ? contact.name : '—'}</div>
-        <div class="iv-recap-meta">
-          ${interview.date ? fmtDate(interview.date) : 'Date à fixer'}${contact?.company ? ` · ${contact.company}` : ''}
+        <button class="btn btn-ghost btn-sm" id="iv-back">← Interviews</button>
+        <div class="page-title" style="margin-top:6px">${_esc(contact ? contact.name : 'Interview')}</div>
+        <div class="page-subtitle">
+          ${contact && contact.company ? _esc(contact.company) + ' · ' : ''}
+          ${iv.date ? fmtDate(iv.date) : 'date à fixer'}
+          <span class="badge ${STATUS_COLORS[iv.status] || 'badge-q3'}" style="margin-left:8px">${_esc(iv.status)}</span>
+          <span id="iv-saved" class="dlv-saved"></span>
         </div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-        <button class="btn btn-ghost btn-sm" id="iv-panel-close" title="Fermer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+      <div class="page-actions">
+        <select class="form-select crm-company-select" id="iv-quick-status">
+          ${INTERVIEW_STATUSES.map(s => `<option value="${s}" ${iv.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+        <button class="btn btn-secondary btn-sm" id="iv-edit">Modifier</button>
+        <button class="btn btn-danger btn-sm" id="iv-del">Supprimer</button>
       </div>
     </div>
 
-    <div class="iv-recap-section-title">Recap</div>
-
-    <div class="iv-recap-view-mode">
-      <div class="iv-recap-content">${renderedMarkdown}</div>
-      <button class="btn btn-ghost btn-sm iv-recap-edit-btn" style="margin-top:10px">
-        ${hasRecap ? 'Éditer le recap' : '+ Ajouter un recap'}
-      </button>
+    <div class="task-tabs">
+      <button class="task-tab ${_tab === 'transcription' ? 'active' : ''}" data-ivtab="transcription">Transcription</button>
+      <button class="task-tab ${_tab === 'synthese' ? 'active' : ''}" data-ivtab="synthese">Synthèse</button>
     </div>
 
-    <div class="iv-recap-edit-mode" style="display:none">
-      <textarea class="iv-recap-textarea" id="iv-recap-textarea" placeholder="# Mon recap&#10;&#10;## Insights clés&#10;- Point 1&#10;- Point 2&#10;&#10;---&#10;&#10;**Citations importantes**">${recap}</textarea>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn btn-primary btn-sm iv-recap-save-btn">Enregistrer</button>
-        <button class="btn btn-ghost btn-sm iv-recap-cancel-btn">Annuler</button>
+    <div id="iv-body"></div>
+  `;
+
+  if (_tab === 'synthese') _renderSynthese(container, iv);
+  else _renderTranscription(container, iv);
+
+  _bindDetail(container, iv);
+}
+
+// Le brut : ce qui s'est dit, tel quel.
+function _renderTranscription(container, iv) {
+  container.querySelector('#iv-body').innerHTML = `
+    <div class="card">
+      <div class="iv-pane-head">
+        <div class="card-title" style="margin:0">Transcription</div>
+        <span class="form-hint" style="margin:0">Le brut : ce qui s'est dit, tes notes pendant l'entretien, ou un transcript collé.</span>
       </div>
+      <textarea class="dlv-textarea" id="iv-transcription" spellcheck="false"
+        placeholder="Colle ici le transcript, ou prends tes notes au fil de l'entretien…">${_esc(iv.transcription)}</textarea>
     </div>`;
+}
 
-  // Fermeture du panneau
-  panel.querySelector('#iv-panel-close').addEventListener('click', () => {
-    panel.style.display = 'none';
+// L'analysé : ce qu'on en retire.
+function _renderSynthese(container, iv) {
+  const synth = iv.synthese || '';
+  const hasSynth = synth.trim().length > 0;
+
+  container.querySelector('#iv-body').innerHTML = `
+    <div class="card">
+      <div class="card-title">Signaux</div>
+      <div class="form-row">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Score Early Adopter</label>
+          <div class="stars" id="iv-stars-inline" style="gap:10px;margin-top:6px;cursor:pointer;font-size:1.2rem">
+            ${starsHTML(iv.ea_score, 5, true, 'ivi')}
+          </div>
+        </div>
+        <div class="form-group" style="margin:0;display:flex;align-items:flex-end;padding-bottom:6px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="iv-validated-inline" ${iv.hypothesis_validated ? 'checked' : ''} style="width:18px;height:18px">
+            <span class="form-label" style="margin:0">✓ Hypothèse validée</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Pain points (séparés par des virgules)</label>
+        <input class="form-input" id="iv-pains-inline" value="${_esc(tagsToInput(iv.pain_points))}" placeholder="Douleur 1, Douleur 2…">
+        ${(iv.pain_points || []).length ? `<div class="iv-tags">${iv.pain_points.map(p => `<span class="pain-tag">${_esc(p)}</span>`).join('')}</div>` : ''}
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Verbatims (un par ligne)</label>
+        <textarea class="form-textarea" id="iv-verbatims-inline" rows="3" placeholder="Citation directe du prospect…">${_esc((iv.verbatims || []).join('\n'))}</textarea>
+        ${(iv.verbatims || []).length ? (iv.verbatims || []).map(v => `<div class="verbatim-card">« ${_esc(v)} »</div>`).join('') : ''}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="iv-pane-head">
+        <div class="card-title" style="margin:0">Synthèse rédigée</div>
+        <button class="btn btn-ghost btn-sm" id="iv-synth-toggle">${_editSynth ? 'Aperçu' : (hasSynth ? 'Éditer' : '+ Rédiger')}</button>
+      </div>
+      ${_editSynth ? `
+        <textarea class="dlv-textarea" id="iv-synthese" spellcheck="false"
+          placeholder="## Enseignements&#10;- …&#10;&#10;## Signaux forts&#10;- …&#10;&#10;## Ce que ça infirme&#10;- …">${_esc(synth)}</textarea>`
+      : hasSynth
+        ? `<div class="iv-recap-content">${renderMarkdown(synth)}</div>`
+        : `<p class="iv-recap-empty">Pas encore de synthèse. Les enseignements, signaux forts ou faibles,
+             ce que l'entretien confirme ou infirme.</p>`}
+    </div>`;
+}
+
+function _bindDetail(container, iv) {
+  const go = () => renderInterviews(container);
+  const flag = () => {
+    const el = container.querySelector('#iv-saved');
+    if (!el) return;
+    el.textContent = ' · enregistré';
+    setTimeout(() => { if (el.isConnected) el.textContent = ''; }, 1200);
+  };
+  const patch = p => { saveInterview({ ...getInterviewById(_openId), ...p }); flag(); };
+
+  container.querySelector('#iv-back').addEventListener('click', () => { _openId = null; go(); });
+  container.querySelectorAll('[data-ivtab]').forEach(b =>
+    b.addEventListener('click', () => { _tab = b.dataset.ivtab; _editSynth = false; go(); }));
+
+  container.querySelector('#iv-quick-status').addEventListener('change', e => {
+    patch({ status: e.target.value });
+    go();
+  });
+  container.querySelector('#iv-edit').addEventListener('click', () => openInterviewModal(getInterviewById(_openId), container));
+  container.querySelector('#iv-del').addEventListener('click', () => {
+    confirmModal('Supprimer cette interview ?', () => {
+      deleteInterview(_openId);
+      _openId = null;
+      toast('Interview supprimée');
+      go();
+    });
   });
 
-  const viewMode = panel.querySelector('.iv-recap-view-mode');
-  const editMode = panel.querySelector('.iv-recap-edit-mode');
+  // Auto-save débounce, comme l'édition de sections ailleurs dans l'app
+  const autosave = (el, field) => {
+    if (!el) return;
+    el.addEventListener('input', () => {
+      clearTimeout(_timer);
+      _timer = setTimeout(() => patch({ [field]: el.value }), 900);
+    });
+    el.addEventListener('blur', () => { clearTimeout(_timer); patch({ [field]: el.value }); });
+  };
 
-  // Basculer en mode édition
-  panel.querySelector('.iv-recap-edit-btn').addEventListener('click', () => {
-    viewMode.style.display = 'none';
-    editMode.style.display = '';
-    panel.querySelector('#iv-recap-textarea').focus();
+  autosave(container.querySelector('#iv-transcription'), 'transcription');
+  autosave(container.querySelector('#iv-synthese'), 'synthese');
+
+  const pains = container.querySelector('#iv-pains-inline');
+  if (pains) {
+    pains.addEventListener('blur', () => { patch({ pain_points: parseTagsInput(pains.value) }); go(); });
+  }
+  const verb = container.querySelector('#iv-verbatims-inline');
+  if (verb) {
+    verb.addEventListener('blur', () => {
+      patch({ verbatims: verb.value.split('\n').map(s => s.trim()).filter(Boolean) });
+      go();
+    });
+  }
+  container.querySelector('#iv-validated-inline')?.addEventListener('change', e =>
+    patch({ hypothesis_validated: e.target.checked }));
+
+  container.querySelectorAll('#iv-stars-inline .star').forEach(star => {
+    star.addEventListener('click', () => {
+      patch({ ea_score: Number(star.dataset.star) });
+      go();
+    });
   });
 
-  // Annuler l'édition
-  panel.querySelector('.iv-recap-cancel-btn').addEventListener('click', () => {
-    editMode.style.display = 'none';
-    viewMode.style.display = '';
-  });
-
-  // Sauvegarder le recap
-  panel.querySelector('.iv-recap-save-btn').addEventListener('click', () => {
-    const newRecap = panel.querySelector('#iv-recap-textarea').value;
-    const updated  = { ...interview, recap: newRecap };
-    saveInterview(updated);
-    toast('Recap sauvegardé', 'success');
-    _renderRecapView(updated, container, panel);
+  container.querySelector('#iv-synth-toggle')?.addEventListener('click', () => {
+    // On enregistre avant de basculer, sinon la frappe en cours serait perdue
+    const ta = container.querySelector('#iv-synthese');
+    if (ta) { clearTimeout(_timer); patch({ synthese: ta.value }); }
+    _editSynth = !_editSynth;
+    go();
   });
 }
 
-// ── Modal interview ──────────────────────────────────────────
-export function openInterviewModal(interview, container, defaultStatus = 'À contacter') {
+// ── Modal : contact, statut, date ────────────────────────────
+export function openInterviewModal(interview, container) {
   const isNew = !interview;
   const iv = interview || {
-    id: null, contact_id: '', status: defaultStatus, date: '',
+    id: null, contact_id: '', status: INTERVIEW_STATUSES[0], date: '',
     pain_points: [], hypothesis_validated: false, ea_score: 0,
-    notes: '', verbatims: [], recap: ''
+    verbatims: [], transcription: '', synthese: '',
   };
-
   const contacts = getContacts();
-  const ideas    = getIdeas();
 
   openModal({
     title: isNew ? 'Nouvelle interview' : `Interview — ${getContactById(iv.contact_id)?.name || ''}`,
     showDelete: !isNew,
     bodyHTML: `
+      <div class="form-group">
+        <label class="form-label">Contact *</label>
+        <select class="form-select" id="iv-contact">
+          <option value="">— Choisir —</option>
+          ${contacts.map(c => `<option value="${c.id}" ${iv.contact_id === c.id ? 'selected' : ''}>${_esc(c.name)}${c.company ? ' · ' + _esc(c.company) : ''}</option>`).join('')}
+        </select>
+        ${contacts.length ? '' : '<div class="form-hint">Aucun contact au CRM — ajoute d\'abord la personne.</div>'}
+      </div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Contact *</label>
-          <select class="form-select" id="iv-contact">
-            <option value="">— Choisir —</option>
-            ${contacts.map(c => `<option value="${c.id}" ${iv.contact_id === c.id ? 'selected' : ''}>${c.name} · ${c.company}</option>`).join('')}
-          </select>
-        </div>
         <div class="form-group">
           <label class="form-label">Statut</label>
           <select class="form-select" id="iv-status">
-            ${STATUTS.map(s => `<option value="${s}" ${iv.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+            ${INTERVIEW_STATUSES.map(s => `<option value="${s}" ${iv.status === s ? 'selected' : ''}>${s}</option>`).join('')}
           </select>
         </div>
-      </div>
-      <div class="form-row">
         <div class="form-group">
           <label class="form-label">Date</label>
           <input class="form-input" id="iv-date" type="date" value="${iv.date || ''}">
         </div>
-        <div class="form-group">
-          <label class="form-label">Score Early Adopter</label>
-          <div class="stars" id="iv-stars" style="gap:10px;margin-top:6px;cursor:pointer;font-size:1.2rem">
-            ${starsHTML(iv.ea_score, 5, true, 'iv')}
-          </div>
-          <input type="hidden" id="iv-ea-score" value="${iv.ea_score}">
-        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Pain points (séparés par virgules)</label>
-        <input class="form-input" id="iv-pains" value="${tagsToInput(iv.pain_points)}" placeholder="Douleur 1, Douleur 2…">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Notes complètes</label>
-        <textarea class="form-textarea" id="iv-notes" rows="5" placeholder="Résumé de l'interview, signaux forts/faibles…">${iv.notes || ''}</textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Verbatims (un par ligne)</label>
-        <textarea class="form-textarea" id="iv-verbatims" rows="3" placeholder="Citation directe du prospect…">${(iv.verbatims || []).join('\n')}</textarea>
-      </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:10px">
-        <input type="checkbox" id="iv-validated" ${iv.hypothesis_validated ? 'checked' : ''} style="width:18px;height:18px">
-        <label class="form-label" for="iv-validated" style="margin:0;cursor:pointer">✓ Hypothèse validée lors de cette interview</label>
+      <div class="form-hint">
+        La transcription et la synthèse se remplissent ensuite dans la fiche de l'interview.
       </div>`,
     onSave: () => {
       const contact_id = document.getElementById('iv-contact').value;
       if (!contact_id) { toast('Choisir un contact', 'error'); return; }
-      saveInterview({
+      const saved = saveInterview({
         ...iv,
         contact_id,
         status: document.getElementById('iv-status').value,
         date: document.getElementById('iv-date').value,
-        ea_score: Number(document.getElementById('iv-ea-score').value) || 0,
-        pain_points: parseTagsInput(document.getElementById('iv-pains').value),
-        notes: document.getElementById('iv-notes').value.trim(),
-        verbatims: document.getElementById('iv-verbatims').value.split('\n').map(s => s.trim()).filter(Boolean),
-        hypothesis_validated: document.getElementById('iv-validated').checked,
       });
       closeModal();
       toast(isNew ? 'Interview créée' : 'Interview mise à jour', 'success');
+      // On enchaîne directement sur la fiche : créer une interview, c'est
+      // vouloir la remplir.
+      if (isNew) { _openId = saved.id; _tab = 'transcription'; _editSynth = false; }
       renderInterviews(container);
-      // Re-ouvre le panneau sur l'interview mise à jour si ce n'est pas une création
-      if (!isNew) {
-        const updated = getInterviewById(iv.id);
-        if (updated) _openRecapPanel(updated, container);
-      }
     },
     onDelete: () => {
       closeModal();
       confirmModal('Supprimer cette interview ?', () => {
         deleteInterview(iv.id);
+        _openId = null;
         toast('Interview supprimée');
         renderInterviews(container);
       });
     },
   });
-
-  // Étoiles cliquables
-  setTimeout(() => {
-    document.querySelectorAll('#iv-stars .star').forEach(star => {
-      star.addEventListener('click', () => {
-        const val = Number(star.dataset.star);
-        document.getElementById('iv-ea-score').value = val;
-        document.querySelectorAll('#iv-stars .star').forEach((s, i) => {
-          s.classList.toggle('filled', i < val);
-        });
-      });
-    });
-  }, 0);
 }

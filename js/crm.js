@@ -4,17 +4,31 @@
 
 import {
   getContacts, saveContact, deleteContact, getContactById,
-  getInterviews, getCompanies, normalizeText,
+  getInterviews, getCompanies, normalizeText, sortInteractionsByRecency, getLastInteraction,
+  getContactStage, getContactsToFollowUp, CONTACT_STAGES,
   openModal, closeModal, confirmModal, starsHTML,
   fmtDate, daysSince, toast, truncate, tagsToInput, parseTagsInput,
   uid, todayStr
 } from './core.js';
 
 const PAGE_SIZE = 25;
+// Au-delà, un contact est signalé comme laissé en plan
+const LATE_AFTER_DAYS = 14;
 
 // Les contacts les plus précieux en premier, à égalité par ordre alphabétique
 const byPertinence = (a, b) =>
   (b.pertinence || 0) - (a.pertinence || 0) || a.name.localeCompare(b.name, 'fr');
+
+// Sans interaction, il n'y a rien à comparer : ces contacts ferment la marche
+// quel que soit le sens du tri.
+const byLastInteraction = dir => (a, b) => {
+  const da = (_getLastInteraction(a) || {}).date || '';
+  const db = (_getLastInteraction(b) || {}).date || '';
+  if (!da && !db) return a.name.localeCompare(b.name, 'fr');
+  if (!da) return 1;
+  if (!db) return -1;
+  return dir === 'asc' ? da.localeCompare(db) : db.localeCompare(da);
+};
 
 const INTERACTION_TYPES = [
   // LinkedIn
@@ -39,21 +53,41 @@ const INTERACTION_GROUPS = ['Tous', 'LinkedIn', 'Email', 'Appel / RDV', 'Autre',
 
 let _filterInteraction = 'Tous';
 let _filterCompany     = 'Toutes';
+let _filterStage       = 'Toutes';
+let _filterFavorites   = false;
+let _filterFollowUp    = false;
 let _search            = '';
+// Tri sur la dernière interaction : null = tri par pertinence (défaut)
+let _sortInter         = null;   // null | 'desc' | 'asc'
 // État d'affichage pur : la page courante n'a pas à être persistée
 let _page              = 1;
 let _modalInteractions = [];
+// Raisons de relance de la passe de rendu en cours, pour les afficher en ligne
+let _followUpInfo      = null;
 
 export function renderCRM(container) {
   const contacts  = getContacts();
   const companies = getCompanies();
-  const filtered  = _applyFilters(contacts).sort(byPertinence);
+  // « À relancer » impose son propre ordre : du plus en retard au moins.
+  const followUp  = getContactsToFollowUp(contacts, todayStr());
+  const byId      = new Map(followUp.map(f => [f.contact.id, f]));
+  let filtered;
+  if (_filterFollowUp) {
+    filtered = followUp.map(f => f.contact).filter(c => _passesFilters(c));
+  } else {
+    filtered = _applyFilters(contacts).sort(_sortInter ? byLastInteraction(_sortInter) : byPertinence);
+    // Hors tri explicite, les favoris remontent en tête sans casser l'ordre
+    if (!_sortInter) {
+      filtered = [...filtered.filter(c => c.favorite), ...filtered.filter(c => !c.favorite)];
+    }
+  }
 
   // La pagination s'applique après recherche et filtres
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   if (_page > pageCount) _page = pageCount;
   const start = (_page - 1) * PAGE_SIZE;
   const pageRows = filtered.slice(start, start + PAGE_SIZE);
+  _followUpInfo = byId;
 
   container.innerHTML = `
     <div class="page-header">
@@ -73,12 +107,26 @@ export function renderCRM(container) {
     <div class="crm-search">
       <svg class="crm-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input class="form-input crm-search-input" id="crm-search" value="${_esc(_search)}"
-             placeholder="Rechercher un nom, une entreprise, un secteur, une note…" autocomplete="off">
+             placeholder="Rechercher un nom, une entreprise, un poste, une note…" autocomplete="off">
       ${_search ? `<button class="crm-search-clear" id="crm-search-clear" title="Vider la recherche">×</button>` : ''}
     </div>
 
     <!-- Filtres -->
     <div class="filter-bar">
+      <button class="filter-chip crm-chip-followup ${_filterFollowUp ? 'active' : ''}" data-ffu="1"
+        title="Contacts bloqués à une étape d'attente, ou dont la relance est échue">
+        ⏰ À relancer${followUp.length ? ` (${followUp.length})` : ''}
+      </button>
+      <button class="filter-chip ${_filterFavorites ? 'active' : ''}" data-ffav="1">★ Favoris</button>
+      <div class="filter-sep"></div>
+      <span style="font-size:.8rem;color:var(--text-3);font-weight:600">Étape :</span>
+      <button class="filter-chip ${_filterStage === 'Toutes' ? 'active' : ''}" data-fstage="Toutes">Toutes</button>
+      ${CONTACT_STAGES.map(st => `
+        <button class="filter-chip ${_filterStage === st.key ? 'active' : ''}" data-fstage="${st.key}">${st.label}</button>
+      `).join('')}
+    </div>
+
+    <div class="filter-bar" style="margin-top:6px">
       <span style="font-size:.8rem;color:var(--text-3);font-weight:600">Interaction :</span>
       ${INTERACTION_GROUPS.map(g => `<button class="filter-chip ${_filterInteraction === g ? 'active' : ''}" data-fi="${g}">${g}</button>`).join('')}
     </div>
@@ -97,17 +145,20 @@ export function renderCRM(container) {
       <table class="crm-table">
         <thead>
           <tr>
+            <th class="crm-th-fav" title="Favori">★</th>
             <th>Nom</th>
             <th>Entreprise</th>
             <th>Pertinence</th>
-            <th>Dernière interaction</th>
-            <th>Dernier contact</th>
-            <th>Secteur</th>
+            <th class="crm-th-sort" id="crm-sort-inter" title="Trier par dernière interaction">
+              Dernière interaction <span class="crm-sort-arrow">${_sortInter === 'desc' ? '▼' : _sortInter === 'asc' ? '▲' : '↕'}</span>
+            </th>
+            <th>Étape</th>
+            <th>Poste</th>
           </tr>
         </thead>
         <tbody>
           ${pageRows.length ? pageRows.map(c => _contactRow(c)).join('') : `
-            <tr><td colspan="6">
+            <tr><td colspan="7">
               <div class="empty-state"><p>${_emptyMessage(contacts.length)}</p></div>
             </td></tr>`}
         </tbody>
@@ -147,16 +198,14 @@ function _esc(str) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function _getLastInteraction(c) {
-  const interactions = c.interactions || [];
-  if (!interactions.length) return null;
-  return [...interactions].sort((a, b) => b.date.localeCompare(a.date))[0];
-}
+// L'ordre de récence vit dans core.js : à date égale, c'est la dernière
+// interaction saisie qui fait foi.
+const _getLastInteraction = getLastInteraction;
 
 function _getNextFollowup(c) {
   const interactions = c.interactions || [];
   if (!interactions.length) return null;
-  const sorted = [...interactions].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = sortInteractionsByRecency(interactions);
   for (const inter of sorted) {
     if (inter.next_followup) return inter.next_followup;
   }
@@ -172,7 +221,7 @@ function _timelineHTML(interactions) {
     return `<div style="font-size:.82rem;color:var(--text-3);padding:6px 0">Aucune interaction enregistrée</div>`;
   }
   const today = todayStr();
-  const sorted = [...interactions].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = sortInteractionsByRecency(interactions);
   return `<div class="interaction-timeline">${sorted.map(inter => {
     const info = _interactionTypeInfo(inter.type);
     const overdue = inter.next_followup && inter.next_followup < today;
@@ -193,8 +242,9 @@ function _timelineHTML(interactions) {
 }
 
 function _contactRow(c) {
-  const late         = daysSince(c.last_contact) > 14;
   const lastInter    = _getLastInteraction(c);
+  // Sans interaction, rien à mesurer : pas de retard.
+  const late         = lastInter ? daysSince(lastInter.date) > LATE_AFTER_DAYS : false;
   const nextFollowup = _getNextFollowup(c);
   const today        = todayStr();
 
@@ -210,47 +260,61 @@ function _contactRow(c) {
     }
     interCell = `
       <div class="inter-last-label">${info.icon} ${info.short}</div>
-      <div class="inter-last-meta">${fmtDate(lastInter.date)} · ${agoStr}</div>
+      <div class="inter-last-meta">
+        ${fmtDate(lastInter.date)} · ${agoStr}
+        ${late ? `<span class="late-badge" title="Aucune interaction depuis ${ago} jours">⚠ ${ago}j</span>` : ''}
+      </div>
       ${followupLine}`;
   }
 
+  const stage = getContactStage(c);
+  const fu = _followUpInfo ? _followUpInfo.get(c.id) : null;
+
   return `
     <tr data-id="${c.id}">
-      <td><div class="contact-name">${_esc(c.name)}</div></td>
+      <td class="crm-fav-cell">
+        <button class="crm-fav ${c.favorite ? 'on' : ''}" data-fav="${c.id}"
+          title="${c.favorite ? 'Retirer des favoris' : 'Mettre en favori'}">${c.favorite ? '★' : '☆'}</button>
+      </td>
+      <td>
+        <div class="contact-name">${_esc(c.name)}</div>
+        ${fu ? `<div class="crm-fu-reason">⏰ ${_esc(fu.label)}</div>` : ''}
+      </td>
       <td>${c.company
         ? `<span class="company-cell">${_esc(c.company)}</span>`
         : '<span style="color:var(--text-3)">—</span>'}</td>
       <td><span class="stars" title="Pertinence ${c.pertinence || 0}/5">${starsHTML(c.pertinence || 0)}</span></td>
       <td>${interCell}</td>
-      <td>
-        ${fmtDate(c.last_contact)}
-        ${late ? `<span class="late-badge" title="Contact il y a ${daysSince(c.last_contact)} jours">⚠ ${daysSince(c.last_contact)}j</span>` : ''}
-      </td>
-      <td><span class="sector-tag">${_esc(c.secteur) || '—'}</span></td>
+      <td><span class="badge crm-stage crm-stage-${stage.key}">${stage.label}</span></td>
+      <td><span class="sector-tag">${_esc(c.poste) || '—'}</span></td>
     </tr>`;
 }
 
 function _applyFilters(contacts) {
+  return contacts.filter(_passesFilters);
+}
+
+function _passesFilters(c) {
   const q = normalizeText(_search);
-  return contacts.filter(c => {
-    // Recherche : nom, entreprise, secteur, notes
-    if (q) {
-      const haystack = normalizeText([c.name, c.company, c.secteur, c.notes].filter(Boolean).join(' '));
-      if (!haystack.includes(q)) return false;
+  // Recherche : nom, entreprise, poste, notes
+  if (q) {
+    const haystack = normalizeText([c.name, c.company, c.poste, c.notes].filter(Boolean).join(' '));
+    if (!haystack.includes(q)) return false;
+  }
+  if (_filterCompany !== 'Toutes' && normalizeText(c.company) !== normalizeText(_filterCompany)) return false;
+  if (_filterFavorites && !c.favorite) return false;
+  if (_filterStage !== 'Toutes' && getContactStage(c).key !== _filterStage) return false;
+  if (_filterInteraction !== 'Tous') {
+    const last = _getLastInteraction(c);
+    if (_filterInteraction === 'Aucune') {
+      if (last) return false;
+    } else {
+      if (!last) return false;
+      const info = _interactionTypeInfo(last.type);
+      if (info.group !== _filterInteraction) return false;
     }
-    if (_filterCompany !== 'Toutes' && normalizeText(c.company) !== normalizeText(_filterCompany)) return false;
-    if (_filterInteraction !== 'Tous') {
-      const last = _getLastInteraction(c);
-      if (_filterInteraction === 'Aucune') {
-        if (last) return false;
-      } else {
-        if (!last) return false;
-        const info = _interactionTypeInfo(last.type);
-        if (info.group !== _filterInteraction) return false;
-      }
-    }
-    return true;
-  });
+  }
+  return true;
 }
 
 function _bindCRM(container) {
@@ -277,6 +341,30 @@ function _bindCRM(container) {
       again.setSelectionRange(again.value.length, again.value.length);
     });
   }
+  container.querySelectorAll('[data-ffav]').forEach(b =>
+    b.addEventListener('click', () => { _filterFavorites = !_filterFavorites; reset(); }));
+  container.querySelectorAll('[data-ffu]').forEach(b =>
+    b.addEventListener('click', () => { _filterFollowUp = !_filterFollowUp; reset(); }));
+  container.querySelectorAll('[data-fstage]').forEach(b =>
+    b.addEventListener('click', () => { _filterStage = b.dataset.fstage; reset(); }));
+
+  // L'étoile bascule le favori sans ouvrir la fiche
+  container.querySelectorAll('[data-fav]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const c = getContactById(btn.dataset.fav);
+      if (!c) return;
+      saveContact({ ...c, favorite: !c.favorite });
+      renderCRM(container);
+    });
+  });
+
+  container.querySelector('#crm-sort-inter')?.addEventListener('click', () => {
+    // Premier clic : plus récent en haut. Second : ordre inverse.
+    _sortInter = _sortInter === 'desc' ? 'asc' : 'desc';
+    reset();
+  });
+
   container.querySelector('#crm-search-clear')?.addEventListener('click', () => {
     _search = ''; reset();
     container.querySelector('#crm-search')?.focus();
@@ -307,8 +395,8 @@ function _bindCRM(container) {
 export function openContactModal(contact, container) {
   const isNew = !contact;
   const c = contact || {
-    id: null, name: '', company: '',
-    last_contact: todayStr(), pertinence: 3, secteur: '', notes: '',
+    id: null, name: '', company: '', favorite: false,
+    pertinence: 3, poste: '', notes: '',
     interactions: [], email: '', phone: '', linkedin: ''
   };
   _modalInteractions = [...(c.interactions || [])];
@@ -332,7 +420,11 @@ export function openContactModal(contact, container) {
     bodyHTML: `
       <div class="form-group">
         <label class="form-label">Nom *</label>
-        <input class="form-input" id="c-name" value="${_esc(c.name)}" placeholder="Prénom Nom">
+        <div class="input-with-action">
+          <input class="form-input" id="c-name" value="${_esc(c.name)}" placeholder="Prénom Nom">
+          <button class="crm-fav crm-fav-lg ${c.favorite ? 'on' : ''}" id="c-fav" type="button"
+            title="Favori">${c.favorite ? '★' : '☆'}</button>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Entreprise</label>
@@ -365,15 +457,9 @@ export function openContactModal(contact, container) {
         </div>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Dernier contact</label>
-          <input class="form-input" id="c-last" type="date" value="${c.last_contact || ''}">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Secteur d'activité</label>
-          <input class="form-input" id="c-secteur" value="${_esc(c.secteur)}" placeholder="ex: Location de matériel, Festival, Salle…">
-        </div>
+      <div class="form-group">
+        <label class="form-label">Poste</label>
+        <input class="form-input" id="c-poste" value="${_esc(c.poste)}" placeholder="ex : Responsable logistique">
       </div>
       <div class="form-group">
         <label class="form-label">Pertinence (1–5)</label>
@@ -441,9 +527,9 @@ export function openContactModal(contact, container) {
         ...c,
         name,
         company: document.getElementById('c-company').value.trim(),
-        last_contact: document.getElementById('c-last').value,
+        favorite: document.getElementById('c-fav').classList.contains('on'),
         pertinence: Number(document.getElementById('c-pertinence').value) || 3,
-        secteur: document.getElementById('c-secteur').value.trim(),
+        poste: document.getElementById('c-poste').value.trim(),
         notes: document.getElementById('c-notes').value.trim(),
         interactions: _modalInteractions,
         linkedin: document.getElementById('c-linkedin').value.trim(),
@@ -474,6 +560,12 @@ export function openContactModal(contact, container) {
           s.classList.toggle('filled', i < val);
         });
       });
+    });
+
+    const favBtn = document.getElementById('c-fav');
+    favBtn?.addEventListener('click', () => {
+      favBtn.classList.toggle('on');
+      favBtn.textContent = favBtn.classList.contains('on') ? '★' : '☆';
     });
 
     _bindInteractionSection();

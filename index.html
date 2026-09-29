@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Founder OS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,12 76.87,23.13 88,50 76.87,76.87 50,88 23.13,76.87 12,50 23.13,23.13' fill='none' stroke='%2317171A' stroke-width='7' stroke-linejoin='round'/%3E%3Cpolygon points='50,30 64.14,35.86 70,50 64.14,64.14 50,70 35.86,64.14 30,50 35.86,35.86' fill='%23E4682E'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap">
   <link rel="stylesheet" href="css/app.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
@@ -27,7 +31,15 @@
   <!-- ── Sidebar ── -->
   <nav id="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-mark">Founder OS</div>
+      <span class="brand">
+        <svg class="brand-mark" viewBox="0 0 100 100" width="26" height="26" aria-hidden="true">
+          <polygon points="50,12 76.87,23.13 88,50 76.87,76.87 50,88 23.13,76.87 12,50 23.13,23.13"
+                   fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"/>
+          <polygon points="50,30 64.14,35.86 70,50 64.14,64.14 50,70 35.86,64.14 30,50 35.86,35.86"
+                   fill="var(--accent)"/>
+        </svg>
+        <span class="brand-word">Founder<span class="brand-os">OS</span></span>
+      </span>
       <div class="logo-sub">Système entrepreneurial</div>
     </div>
 
@@ -57,6 +69,13 @@
           <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
         </svg>
         <span>CRM</span>
+      </button>
+
+      <button class="nav-item" data-view="prospection">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 21h18M6 21V7l6-4 6 4v14"/><path d="M10 21v-5h4v5"/>
+        </svg>
+        <span>Prospection</span>
       </button>
 
       <button class="nav-item" data-view="interviews">
@@ -141,7 +160,7 @@
   </main>
 
   <script type="module">
-    import { initDB, getMeta, getDB, exportDB, importDB, resetDB, toast, confirmModal } from './js/core.js';
+    import { initDB, getMeta, getDB, exportDB, importDB, resetDB, toast, confirmModal, applyAccent } from './js/core.js';
     import {
       isBackupSupported, getBackupStatus, onBackupStatus,
       linkBackupFile, unlinkBackupFile, reconnectBackup,
@@ -155,6 +174,7 @@
     import { renderCalendar }   from './js/calendar.js';
     import { renderRoadmap }    from './js/roadmap.js';
     import { renderDeliverables } from './js/deliverables.js';
+    import { renderProspection } from './js/prospection.js';
 
     const content = document.getElementById('main-content');
     let _currentView = 'dashboard';
@@ -164,6 +184,7 @@
       dashboard:  renderDashboard,
       tasks:      renderTasks,
       crm:        renderCRM,
+      prospection: renderProspection,
       interviews: renderInterviews,
       ideas:      renderIdeas,
       roadmap:    renderRoadmap,
@@ -257,6 +278,35 @@
             <input class="form-input" id="s-eval" type="date" value="${getMeta().eval_date || ''}" style="max-width:200px">
             <div class="form-hint">Alimente le compte à rebours affiché sur le dashboard.</div>
           </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Demandes de connexion par jour</label>
+              <input class="form-input" id="s-goal" type="number" min="1" value="${getMeta().daily_request_goal ?? 10}" style="max-width:120px">
+              <div class="form-hint">Objectif affiché par le pilote de prospection.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Quota par entreprise</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input class="form-input" id="s-quota-default" type="number" min="1" value="${getMeta().default_quota ?? 3}" style="max-width:80px" title="Par défaut">
+                <span class="form-hint" style="margin:0">par défaut ·</span>
+                <input class="form-input" id="s-quota-large" type="number" min="1" value="${getMeta().large_quota ?? 5}" style="max-width:80px" title="Grande entreprise">
+                <span class="form-hint" style="margin:0">grande</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quota par priorité</label>
+            <input class="form-input" id="s-quota-prio" value="${Object.entries(getMeta().quota_by_priority || {}).map(([k, v]) => k + '=' + v).join(', ')}" placeholder="ex : A+=6, Haute=4, Moyenne=2">
+            <div class="form-hint">Paires <code>libellé=nombre</code> séparées par des virgules. Tes propres libellés, aucun schéma imposé.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Couleur signature</label>
+            <div style="display:flex;gap:10px;align-items:center">
+              <input class="form-input" id="s-accent" type="color" value="${getMeta().accent || '#E4682E'}" style="max-width:64px;padding:3px;height:36px">
+              <button class="btn btn-secondary btn-sm" id="s-accent-reset" type="button">Revenir à l'orange Founder OS</button>
+            </div>
+            <div class="form-hint">Utilisée pour l'action principale, la navigation active et la progression.</div>
+          </div>
           <div class="form-group">
             <label class="form-label">Citation de la semaine</label>
             <input class="form-input" id="s-quote" value="${getMeta().quote}" placeholder="Citation inspirante…">
@@ -301,6 +351,20 @@
         }
       });
 
+      // La couleur n'est appliquée qu'à l'enregistrement, mais prévisualisée en direct
+      _pendingAccent = getMeta().accent || '';
+      const accentInput = container.querySelector('#s-accent');
+      accentInput.addEventListener('input', () => {
+        _pendingAccent = accentInput.value;
+        applyAccent(_pendingAccent);
+      });
+      container.querySelector('#s-accent-reset').addEventListener('click', () => {
+        _pendingAccent = '';
+        applyAccent('');
+        accentInput.value = '#E4682E';
+        toast('Couleur de marque rétablie');
+      });
+
       _renderBackupBlock(container);
 
       // Sauvegarder meta
@@ -310,14 +374,26 @@
             phase: document.getElementById('s-phase').value.trim(),
             week: Number(document.getElementById('s-week').value) || 1,
             eval_date: document.getElementById('s-eval').value,
+            accent: _pendingAccent,
+            daily_request_goal: Number(document.getElementById('s-goal').value) || 10,
+            default_quota: Number(document.getElementById('s-quota-default').value) || 3,
+            large_quota: Number(document.getElementById('s-quota-large').value) || 5,
+            quota_by_priority: Object.fromEntries(
+              document.getElementById('s-quota-prio').value.split(',')
+                .map(p => p.split('=').map(x => x.trim()))
+                .filter(([k, v]) => k && Number(v) > 0)
+                .map(([k, v]) => [k, Number(v)])),
             quote: document.getElementById('s-quote').value.trim(),
             quote_author: document.getElementById('s-author').value.trim(),
           });
+          applyAccent(_pendingAccent);
           toast('Paramètres sauvegardés', 'success');
           document.getElementById('sidebar-phase').textContent = document.getElementById('s-phase').value.trim();
         });
       });
     }
+
+    let _pendingAccent = '';
 
     // ── Bloc sauvegarde automatique ──────────────────────────
     let _backupUnsub = null;
@@ -426,6 +502,7 @@
 
     // ── Boot ─────────────────────────────────────────────────
     await initDB();
+    applyAccent(getMeta().accent);
     navigate('dashboard');
   </script>
 </body>

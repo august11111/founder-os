@@ -8,7 +8,7 @@ import {
   getRoadmapRoots, getRoadmapChildren, getRoadmapItemById,
   getPitchSlides, isSlideInPitch, addPitchSlide, removePitchSlide,
   removePitchSlideRef, movePitchSlide, resolvePitchSlides,
-  confirmModal, toast, uid, todayStr, fmtDate, normalizeText,
+  confirmModal, toast, uid, todayStr, fmtDate, normalizeText, renderMarkdown,
 } from './core.js';
 
 // 'list' | 'edit' | 'pitch'
@@ -590,23 +590,6 @@ function _esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// marked rend le HTML brut tel quel : on assainit le résultat avant insertion
-// pour qu'un <script> ou un onclick collé depuis ailleurs ne s'exécute pas.
-const _FORBIDDEN = ['script', 'iframe', 'object', 'embed', 'link', 'meta', 'style', 'form', 'base'];
-
-function _mdSafe(md) {
-  if (!md || !md.trim()) return '';
-  const html = window.marked ? window.marked.parse(md) : `<pre>${_esc(md)}</pre>`;
-  const tpl = document.createElement('div');
-  tpl.innerHTML = html;
-  tpl.querySelectorAll(_FORBIDDEN.join(',')).forEach(n => n.remove());
-  tpl.querySelectorAll('*').forEach(node => {
-    [...node.attributes].forEach(attr => {
-      const name = attr.name.toLowerCase();
-      const value = (attr.value || '').replace(/\s/g, '').toLowerCase();
-      if (name.startsWith('on')) node.removeAttribute(attr.name);
-      else if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) node.removeAttribute(attr.name);
-    });
-  });
-  return tpl.innerHTML;
-}
+// Le rendu markdown assaini vit dans core.js : Livrables et Interviews
+// partagent la même implémentation.
+const _mdSafe = renderMarkdown;

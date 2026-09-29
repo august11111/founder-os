@@ -3,6 +3,15 @@ data/db.json
 # Fichiers de sauvegarde liés depuis l'app et exports JSON manuels,
 # où qu'ils soient posés dans le dossier du projet
 founder-os*.json
+# Bases marché réelles : noms de prospects et stratégie de ciblage.
+# Seul le gabarit générique data/base-marche.exemple.csv est versionné.
+*prospects-import.json
+*prospects*.json
+*prospects*.csv
+*prospects*.xlsx
+base-marche-*.json
+base-marche-*.csv
+!data/base-marche.exemple.csv
 
 # Paramètres locaux Claude Code
 .claude/settings.local.json

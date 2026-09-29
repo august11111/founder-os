@@ -3,14 +3,15 @@
    ============================================================ */
 
 import {
-  getMeta, getContacts, getInterviews, getContactById,
+  getMeta, getContacts, getInterviews,
   getTodayHabit, saveHabit, updateMeta, getTaskById, setTaskDone,
-  getOneShotTasks, getDueToday, isDoneOn, toggleTaskDay, getStreak,
+  getDueToday, isDoneOn, toggleTaskDay, getStreak,
   getRoadmapRoots, getWeakestDimensions, getQuickWins, pickQuickWin,
-  getProspectionStats,
+  getProspectionStats, getContactsToFollowUp,
   badgeQuadrant, toast, todayStr,
 } from './core.js';
 import { renderRadar } from './radar.js';
+import { renderDailyPilot } from './prospection.js';
 
 // Tâche actuellement piochée dans la file « temps mort »
 let _quickWinId = null;
@@ -28,17 +29,9 @@ export function renderDashboard(container) {
   const weakest    = getWeakestDimensions();
   const dueToday   = getDueToday();
   const dueDone    = dueToday.filter(t => isDoneOn(t)).length;
-  const interviewsDone = interviews.filter(i => i.status === 'Analysé' || i.status === 'Réalisé').length;
+  const interviewsDone = interviews.filter(i => i.status === 'Analysée' || i.status === 'Réalisée').length;
   const quickWins  = getQuickWins();
   const daysLeft   = _daysUntil(meta.eval_date);
-
-  const todayTasks = getOneShotTasks()
-    .filter(t => (t.quadrant === 'Q1' || t.quadrant === 'Q2') && !t.done)
-    .slice(0, 6);
-
-  const pipelineInterviews = interviews
-    .filter(i => i.status === 'À contacter' || i.status === 'Confirmé' || i.status === 'Réalisé')
-    .slice(0, 4);
 
   container.innerHTML = `
     <div class="page-header">
@@ -137,45 +130,12 @@ export function renderDashboard(container) {
         <div class="qw-warning">Réserve basse : sans quick wins d'avance, tes temps morts sont perdus.</div>` : ''}
     </div>
 
+    <!-- Prospection du jour, épinglée depuis le module Prospection -->
+    <div class="card-title" style="margin-top:20px">Prospection du jour</div>
+    <div id="dash-pilot-slot"></div>
+
     <!-- Entonnoir de prospection -->
     ${_prospectionHTML(contacts)}
-
-    <!-- Tâches prioritaires + pipeline interviews -->
-    <div class="dash-grid">
-      <div class="card">
-        <div class="card-title">Tâches prioritaires</div>
-        ${todayTasks.length ? todayTasks.map(t => `
-          <div class="task-item" data-id="${t.id}">
-            <div class="task-check ${t.done ? 'checked' : ''}" data-check="${t.id}">
-              ${t.done ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
-            </div>
-            <span class="task-title">${t.title}</span>
-            <div class="task-meta">${t.quickwin ? '<span title="Quick win">⚡</span>' : ''}${badgeQuadrant(t.quadrant)}</div>
-          </div>
-        `).join('') : '<div class="empty-state"><p>Aucune tâche prioritaire 🎉</p></div>'}
-        <div style="margin-top:12px">
-          <button class="btn btn-ghost btn-sm" data-nav="tasks">Voir toutes les tâches →</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Pipeline interviews</div>
-        ${pipelineInterviews.length ? pipelineInterviews.map(i => {
-          const contact = getContactById(i.contact_id);
-          return `
-            <div class="task-item" style="cursor:default">
-              <div style="flex:1">
-                <div style="font-weight:600;font-size:.88rem">${contact ? contact.name : '—'}</div>
-                <div style="font-size:.78rem;color:var(--text-3)">${contact ? contact.company : ''}</div>
-              </div>
-              <span class="badge ${_interviewStatusBadge(i.status)}">${i.status}</span>
-            </div>`;
-        }).join('') : '<div class="empty-state"><p>Aucune interview en cours</p></div>'}
-        <div style="margin-top:12px">
-          <button class="btn btn-ghost btn-sm" data-nav="interviews">Voir le kanban →</button>
-        </div>
-      </div>
-    </div>
 
     ${meta.quote ? `
       <div class="quote-block">
@@ -183,6 +143,13 @@ export function renderDashboard(container) {
         <div class="quote-author">— ${meta.quote_author}</div>
       </div>` : ''}
   `;
+
+  // Le pilote vit dans le module Prospection : on l'affiche, on ne le duplique pas.
+  renderDailyPilot(container.querySelector('#dash-pilot-slot'), {
+    onChange: () => renderDashboard(container),
+    onOpenDetail: () => container.dispatchEvent(
+      new CustomEvent('navigate', { detail: 'prospection', bubbles: true })),
+  });
 
   renderRadar(container.querySelector('#dash-radar-slot'), () => {
     const ev = new CustomEvent('navigate', { detail: 'roadmap', bubbles: true });
@@ -196,6 +163,8 @@ export function renderDashboard(container) {
 // La vue n'agrège rien : tout vient de getProspectionStats().
 function _prospectionHTML(contacts) {
   const s = getProspectionStats(contacts, { sinceDays: _prospectionDays });
+  // Compté sur l'ensemble des contacts, indépendamment de la fenêtre choisie
+  const toFollowUp = getContactsToFollowUp(contacts, todayStr()).length;
   const periods = [[7, '7 j'], [30, '30 j'], [null, 'Tout']];
 
   // Largeur relative au plus grand étage, pour que l'entonnoir reste lisible
@@ -214,6 +183,7 @@ function _prospectionHTML(contacts) {
     <div class="card prosp-card" style="margin-top:16px">
       <div class="prosp-head">
         <div class="card-title" style="margin:0">Prospection</div>
+        ${toFollowUp ? `<button class="btn-link prosp-followup" data-nav="crm">⏰ ${toFollowUp} à relancer</button>` : ''}
         <div class="filter-bar" style="margin:0">
           ${periods.map(([d, lbl]) => `
             <button class="filter-chip ${_prospectionDays === d ? 'active' : ''}" data-prosp="${d === null ? 'all' : d}">${lbl}</button>
@@ -333,18 +303,6 @@ function _bindDashboard(container) {
     renderDashboard(container);
   });
 
-  // Tâches prioritaires
-  container.querySelectorAll('[data-check]').forEach(check => {
-    check.addEventListener('click', e => {
-      e.stopPropagation();
-      const task = getTaskById(check.dataset.check);
-      if (task) {
-        setTaskDone(task.id, !task.done);
-        renderDashboard(container);
-      }
-    });
-  });
-
   // Fenêtre de l'entonnoir de prospection
   container.querySelectorAll('[data-prosp]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -381,12 +339,3 @@ function _daysUntil(dateStr) {
   return Math.round((target - today) / 86400000);
 }
 
-function _interviewStatusBadge(status) {
-  const map = {
-    'À contacter': 'badge-q3',
-    'Confirmé': 'badge-q2',
-    'Réalisé': 'badge-ea',
-    'Analysé': 'badge-actif',
-  };
-  return map[status] || 'badge-q3';
-}

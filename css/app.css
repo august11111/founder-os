@@ -7,22 +7,29 @@
 
 /* ── Variables ── */
 :root {
-  --bg:           #FAFAF8;
-  --bg-2:         #F2F2EE;
-  --bg-3:         #E8E8E2;
+  --bg:           #F7F7F5;
+  --bg-2:         #F1F1EE;
+  --bg-3:         #E6E6E1;
   --surface:      #FFFFFF;
-  --border:       #E0E0D8;
-  --border-2:     #CACAC0;
-  --text:         #1A1A1A;
-  --text-2:       #4A4A4A;
-  --text-3:       #8A8A7E;
+  --border:       #E6E6E1;
+  --border-2:     #D2D2CC;
+  --text:         #17171A;
+  --text-2:       #6E7079;
+  --text-3:       #9A9A93;
   --text-inv:     #FFFFFF;
   /* Alias utilisés par les modules Roadmap / Finance / Idées */
   --text-1:       var(--text);
   --card:         var(--surface);
 
-  --accent:       #1A1A1A;
-  --accent-hover: #333333;
+  /* Orange signature — réservé à l'action, l'état actif et la progression.
+     Le reste de l'interface reste en encre et gris. */
+  --accent:        #E4682E;
+  --accent-strong: #CF5A2E;
+  --accent-soft:   #FDEEE6;
+  --accent-text:   #B84E1E;   /* orange assombri : petit texte sur fond clair */
+  --accent-rgb:    228,104,46;
+  --accent-hover:  var(--accent-strong);
+  --on-accent:     #FFFFFF;   /* texte posé SUR l'orange, dans les deux thèmes */
 
   /* Quadrants */
   --q1:           #E8503A;
@@ -50,27 +57,34 @@
   --transition:   160ms ease;
 
   --font:         'DM Sans', system-ui, sans-serif;
+  /* Space Grotesk : logotype, titres et chiffres-clés uniquement — pas le corps */
+  --font-display: 'Space Grotesk', 'DM Sans', system-ui, sans-serif;
   --font-mono:    'SFMono-Regular', 'Consolas', monospace;
 }
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg:           #141412;
-    --bg-2:         #1C1C1A;
-    --bg-3:         #242420;
-    --surface:      #1C1C1A;
-    --border:       #2C2C28;
-    --border-2:     #3C3C36;
-    --text:         #F0F0EC;
-    --text-2:       #B0B0A6;
-    --text-3:       #6A6A62;
-    --text-inv:     #1A1A1A;
-    --text-1:       #F0F0EC;
-    --card:         #1C1C1A;
+    --bg:           #0F0F11;
+    --bg-2:         #17181B;
+    --bg-3:         #202126;
+    --surface:      #17181B;
+    --border:       #26272B;
+    --border-2:     #35363C;
+    --text:         #F2F3F5;
+    --text-2:       #A0A2A8;
+    --text-3:       #6E7079;
+    --text-inv:     #17171A;
+    --text-1:       #F2F3F5;
+    --card:         #17181B;
 
-    --accent:       #F0F0EC;
-    --accent-hover: #CACAC0;
+    --accent:        #F0763C;   /* légèrement plus clair pour tenir sur sombre */
+    --accent-strong: #E4682E;
+    --accent-soft:   rgba(240,118,60,.14);
+    --accent-text:   #F0763C;   /* sur sombre, l'orange vif passe en petit texte */
+    --accent-rgb:    240,118,60;
+    --accent-hover:  var(--accent-strong);
+    --on-accent:     #FFFFFF;
 
     --q1-bg:        #2A1612;
     --q2-bg:        #102418;
@@ -133,12 +147,16 @@ main {
   border-bottom: 1px solid var(--border);
   margin-bottom: 12px;
 }
-.sidebar-logo .logo-mark {
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: -.02em;
-  color: var(--text);
+.brand { display: inline-flex; align-items: center; gap: 9px; }
+.brand-mark { color: var(--text-1); flex-shrink: 0; }
+.brand-word {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.12rem;
+  letter-spacing: -.01em;
+  color: var(--text-1);
 }
+.brand-os { color: var(--accent); }
 .sidebar-logo .logo-sub {
   font-size: .72rem;
   color: var(--text-3);
@@ -178,7 +196,15 @@ main {
   text-align: left;
 }
 .nav-item:hover { background: var(--bg-2); color: var(--text); }
-.nav-item.active { background: var(--bg-3); color: var(--text); }
+.nav-item.active {
+  background: var(--accent-soft); color: var(--text);
+  position: relative; font-weight: 600;
+}
+/* Le point orange qui marque la vue courante */
+.nav-item.active::before {
+  content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 18px; border-radius: 0 3px 3px 0; background: var(--accent);
+}
 /* Vue sortie du flux principal mais toujours joignable */
 .nav-item-archive { color: var(--text-3); font-size: .82rem; }
 .nav-item-archive svg { opacity: .5; }
@@ -217,7 +243,7 @@ main {
   gap: 16px;
   flex-wrap: wrap;
 }
-.page-title { font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; }
+.page-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; letter-spacing: -.02em; }
 .page-subtitle { font-size: .88rem; color: var(--text-3); margin-top: 2px; }
 .page-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
@@ -230,11 +256,13 @@ main {
   transition: all var(--transition); text-decoration: none;
   white-space: nowrap;
 }
+/* Encre, pas orange : le bouton reste une action, l'orange est réservé aux
+   états et à la progression. S'inverse tout seul en thème sombre. */
 .btn-primary {
-  background: var(--accent); color: var(--text-inv);
-  border-color: var(--accent);
+  background: var(--text); color: var(--surface);
+  border-color: var(--text);
 }
-.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-primary:hover { opacity: .88; }
 .btn-secondary {
   background: var(--surface); color: var(--text);
   border-color: var(--border-2);
@@ -260,6 +288,7 @@ main {
   box-shadow: var(--shadow);
 }
 .card-title {
+  font-family: var(--font-display);
   font-size: .8rem; font-weight: 600;
   text-transform: uppercase; letter-spacing: .08em;
   color: var(--text-3); margin-bottom: 12px;
@@ -285,7 +314,8 @@ main {
   color: var(--text-3); margin-bottom: 8px;
 }
 .kpi-value {
-  font-size: 2.2rem; font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 2.2rem; font-weight: 600;
   letter-spacing: -.04em; line-height: 1;
   color: var(--text); margin-bottom: 4px;
 }
@@ -324,6 +354,70 @@ main {
   background: var(--q1-bg); color: var(--q1); cursor: pointer;
 }
 
+/* ── Interviews : liste, transcription, synthèse ── */
+.iv-pane-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.iv-dot {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; margin-right: 4px;
+  border-radius: 50%; font-size: .66rem; font-weight: 700;
+  background: var(--bg-2); color: var(--text-3);
+  border: 1px solid var(--border);
+}
+.iv-dot.on { background: var(--q2-bg); color: var(--q2); border-color: transparent; }
+.iv-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+
+/* ── Module Prospection : pilote du jour et base marché ── */
+.prosp-day { border-left: 3px solid var(--accent); }
+.prosp-day-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.prosp-day-count { font-family: var(--font-display); font-size: 2.2rem; font-weight: 600; letter-spacing: -.04em; line-height: 1; color: var(--accent); }
+.prosp-day-count span { font-size: 1.1rem; color: var(--text-3); font-weight: 600; }
+.prosp-day-label { font-size: .82rem; color: var(--text-3); margin-top: 4px; }
+.prosp-day-badge {
+  font-size: .78rem; font-weight: 700; padding: 4px 12px; border-radius: 20px;
+  background: var(--q2-bg); color: var(--q2);
+}
+
+.prosp-pick-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.prosp-picked-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.prosp-picked-name { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
+.prosp-picked-meta {
+  font-size: .82rem; color: var(--text-3); margin-top: 4px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.prosp-quota { text-align: right; flex-shrink: 0; }
+.prosp-quota-val { display: block; font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; letter-spacing: -.03em; }
+.prosp-quota-lbl { font-size: .72rem; color: var(--text-3); }
+.prosp-target { font-size: .84rem; color: var(--text-2); margin-top: 10px; }
+.prosp-target a { color: var(--status-blue); }
+
+.pr-filter { display: inline-flex; align-items: center; gap: 6px; }
+.pr-filter > span { font-size: .8rem; color: var(--text-3); font-weight: 600; }
+.pr-group-badge { cursor: pointer; }
+.pr-group-badge:hover { filter: brightness(1.12); }
+
+.pr-custom-row {
+  display: grid; grid-template-columns: minmax(140px, 240px) 1fr;
+  gap: 12px; align-items: center; margin-bottom: 8px;
+}
+.pr-custom-key { font-size: .8rem; font-weight: 600; color: var(--text-2); }
+.pr-custom-val { font-size: .84rem; }
+
+@media (max-width: 768px) {
+  .pr-custom-row { grid-template-columns: 1fr; gap: 4px; }
+}
+
 /* ── Entonnoir de prospection ── */
 .prosp-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -332,12 +426,13 @@ main {
 .prosp-global {
   display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
   padding: 12px 16px; margin-bottom: 16px;
-  background: var(--bg-2); border-left: 3px solid var(--q2);
+  background: var(--accent-soft); border-left: 3px solid var(--accent);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 .prosp-global-value {
-  font-size: 1.9rem; font-weight: 700; letter-spacing: -.03em;
-  line-height: 1; color: var(--q2);
+  font-family: var(--font-display);
+  font-size: 1.9rem; font-weight: 600; letter-spacing: -.03em;
+  line-height: 1; color: var(--accent);
 }
 .prosp-global-label { font-size: .82rem; color: var(--text-2); }
 
@@ -348,7 +443,8 @@ main {
 }
 .prosp-stage-label { font-size: .84rem; font-weight: 600; color: var(--text-2); }
 .prosp-stage-value {
-  font-size: 1.5rem; font-weight: 700; letter-spacing: -.03em;
+  font-family: var(--font-display);
+  font-size: 1.5rem; font-weight: 600; letter-spacing: -.03em;
   line-height: 1; text-align: right; color: var(--text-1);
 }
 .prosp-bar-track {
@@ -510,7 +606,8 @@ main {
   text-transform: uppercase; letter-spacing: .08em;
 }
 .eisenhower-cell .cell-count {
-  font-size: 2rem; font-weight: 700; letter-spacing: -.04em; line-height: 1;
+  font-family: var(--font-display);
+  font-size: 2rem; font-weight: 600; letter-spacing: -.04em; line-height: 1;
 }
 .eisenhower-cell .cell-desc {
   font-size: .72rem; opacity: .7;
@@ -534,7 +631,7 @@ main {
   color: var(--text-3); cursor: pointer; transition: color var(--transition);
 }
 .task-tab:hover { color: var(--text); }
-.task-tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.task-tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
 .task-tab-count {
   font-size: .72rem; font-weight: 700;
   background: var(--bg-3); color: var(--text-2);
@@ -569,7 +666,7 @@ main {
   color: var(--text-2); cursor: pointer; transition: all var(--transition);
 }
 .weekday-btn:hover { background: var(--bg-3); }
-.weekday-btn.active { background: var(--accent); color: var(--text-inv); border-color: var(--accent); }
+.weekday-btn.active { background: var(--text); color: var(--surface); border-color: var(--text); }
 
 /* ── Filtres ── */
 .filter-bar {
@@ -585,8 +682,8 @@ main {
 }
 .filter-chip:hover { background: var(--bg-3); color: var(--text); }
 .filter-chip.active {
-  background: var(--accent); color: var(--text-inv);
-  border-color: var(--accent);
+  background: var(--text); color: var(--surface);
+  border-color: var(--text);
 }
 .filter-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
 
@@ -608,6 +705,36 @@ main {
 .crm-table tr:hover td { background: var(--bg-2); }
 .crm-table tr { cursor: pointer; transition: background var(--transition); }
 .contact-name { font-weight: 600; color: var(--text); }
+/* Favori : l'orange a droit de cité, c'est un état */
+.crm-fav {
+  background: none; border: none; cursor: pointer; padding: 2px 4px;
+  font-size: 1.05rem; line-height: 1; color: var(--text-3);
+  transition: color var(--transition), transform var(--transition);
+}
+.crm-fav:hover { color: var(--accent); transform: scale(1.15); }
+.crm-fav.on { color: var(--accent); }
+.crm-fav-lg { font-size: 1.3rem; flex-shrink: 0; }
+.crm-th-fav { width: 28px; text-align: center; }
+.crm-fav-cell { width: 28px; text-align: center; }
+
+/* Étape courante : neutre, c'est une information, pas une alerte */
+.crm-stage { background: var(--bg-2); color: var(--text-2); white-space: nowrap; }
+.crm-stage-rdv     { background: var(--q2-bg); color: var(--q2); }
+.crm-stage-repondu { background: var(--q2-bg); color: var(--q2); }
+.crm-stage-aucune  { color: var(--text-3); }
+
+/* Chip « à relancer » et motif en ligne : priorité, donc orange */
+.crm-chip-followup { border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.crm-chip-followup.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.crm-fu-reason { font-size: .74rem; color: var(--accent-text); margin-top: 2px; }
+.prosp-followup { color: var(--accent-text); font-weight: 600; text-decoration: none; }
+.prosp-followup:hover { text-decoration: underline; }
+
+/* En-tête de colonne triable */
+.crm-th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.crm-th-sort:hover { color: var(--text); }
+.crm-sort-arrow { font-size: .7rem; opacity: .55; margin-left: 2px; }
+.crm-th-sort:hover .crm-sort-arrow { opacity: 1; }
 /* L'entreprise est une colonne de premier plan, pas un sous-titre */
 .company-cell { font-size: .88rem; font-weight: 500; color: var(--text-1); }
 
@@ -638,7 +765,7 @@ main {
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; border-radius: var(--radius-sm);
   background: var(--bg-2); border: 1px solid var(--border);
-  color: var(--accent); cursor: pointer; transition: background var(--transition);
+  color: var(--text-2); cursor: pointer; transition: background var(--transition);
 }
 .btn-open-url:hover:not(:disabled) { background: var(--bg-3); }
 .btn-open-url:disabled { color: var(--text-3); cursor: default; }
@@ -984,7 +1111,7 @@ main {
 .dlv-status { font-size: .68rem; font-weight: 700; padding: 2px 9px; border-radius: 20px; }
 .dlv-status-draft { background: var(--bg-2); color: var(--text-3); }
 .dlv-status-final { background: var(--q2-bg); color: var(--q2); }
-.dlv-card-title { font-size: .96rem; font-weight: 700; line-height: 1.3; }
+.dlv-card-title { font-family: var(--font-display); font-size: .96rem; font-weight: 600; line-height: 1.3; }
 .dlv-card-obj { font-size: .78rem; color: var(--text-2); }
 .dlv-card-foot {
   display: flex; justify-content: space-between;
@@ -1106,7 +1233,7 @@ main {
 .present-nav { display: flex; align-items: center; gap: 10px; }
 .present-pos { font-size: .85rem; font-weight: 700; color: var(--text-2); min-width: 60px; text-align: center; }
 .present-progress { height: 3px; background: var(--bg-3); }
-.present-progress-fill { height: 100%; background: var(--q2); transition: width .2s ease; }
+.present-progress-fill { height: 100%; background: var(--accent); transition: width .2s ease; }
 
 /* ── Assembleur du pitch ── */
 .pitch-list { display: flex; flex-direction: column; gap: 8px; }
@@ -1259,7 +1386,7 @@ main {
   display: flex; flex-direction: column; gap: 8px;
 }
 .toast {
-  background: var(--accent); color: var(--text-inv);
+  background: var(--text); color: var(--surface);
   padding: 10px 16px; border-radius: var(--radius-sm);
   font-size: .85rem; font-weight: 500;
   box-shadow: var(--shadow-lg);
@@ -1380,7 +1507,7 @@ main {
   transition: background var(--transition);
 }
 .cal-mini-cell:hover { background: var(--bg-2); }
-.cal-mini-cell.mini-today { background: var(--accent); color: var(--text-inv); font-weight: 700; }
+.cal-mini-cell.mini-today { background: var(--text); color: var(--surface); font-weight: 700; }
 .cal-mini-cell.mini-sel   { background: var(--bg-3); font-weight: 600; color: var(--text); }
 .cal-mini-dot {
   width: 4px; height: 4px;
@@ -1491,8 +1618,8 @@ main {
   line-height: 1;
 }
 .dd-today {
-  background: var(--accent);
-  color: var(--text-inv);
+  background: var(--text);
+  color: var(--surface);
   border-radius: 50%;
   width: 32px; height: 32px;
   display: flex; align-items: center; justify-content: center;
@@ -1641,8 +1768,8 @@ main {
   line-height: 1;
 }
 .cal-month-date.md-today {
-  background: var(--accent);
-  color: var(--text-inv);
+  background: var(--text);
+  color: var(--surface);
   border-radius: 50%;
   width: 24px; height: 24px;
   display: flex; align-items: center; justify-content: center;
@@ -1721,13 +1848,13 @@ main {
 .rm-level-badge {
   display: inline-flex; align-items: center;
   padding: 3px 12px; border-radius: 20px;
-  background: linear-gradient(135deg, #F59E0B, #F97316);
-  color: #fff; font-weight: 700; font-size: .75rem; letter-spacing: .03em;
+  background: var(--accent);
+  color: var(--on-accent); font-weight: 700; font-size: .75rem; letter-spacing: .03em;
 }
 .rm-xp-label { font-size: .85rem; color: var(--text-2); }
 .rm-xp-pct   { font-size: .82rem; font-weight: 600; color: var(--text-3); }
 .rm-track-wrap { height: 8px; background: var(--bg-2); border-radius: 99px; overflow: hidden; }
-.rm-track-fill { height: 100%; background: linear-gradient(90deg, #F59E0B, #1D9E75); border-radius: 99px; transition: width .5s ease; }
+.rm-track-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .5s ease; }
 
 .achievement-grid {
   display: grid;
@@ -2000,7 +2127,7 @@ main {
   font-family: var(--font);
 }
 .fin-tab:hover   { color: var(--text); }
-.fin-tab.active  { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.fin-tab.active  { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
 
 /* ── Tab content ── */
 .fin-tab-content { min-height: 200px; }
@@ -2151,7 +2278,7 @@ main {
   transition: color var(--transition), border-color var(--transition);
 }
 .fin-dtab:hover  { color: var(--text); }
-.fin-dtab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.fin-dtab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
 
 .fin-drawer-body {
   flex: 1;
@@ -2362,7 +2489,7 @@ main {
 .ws-nav-item:hover { background: var(--bg-3); color: var(--text); }
 .ws-nav-item.active {
   background: var(--surface); color: var(--text);
-  font-weight: 600; border-right-color: var(--accent);
+  font-weight: 600; border-right-color: var(--text);
 }
 .ws-nav-num  { font-size: .65rem; font-weight: 700; color: var(--text-3); min-width: 14px; text-align: right; flex-shrink: 0; }
 .ws-nav-icon { font-size: .82rem; flex-shrink: 0; }

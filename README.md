@@ -43,6 +43,11 @@ tâche courte quand vous avez un temps mort.
 **CRM** — contacts, entreprises, historique d'interactions et relances. Un entonnoir de
 prospection agrège tout ça en volumes et taux de conversion : demandes → acceptations → RDV.
 
+**Prospection** — votre base marché dans l'outil, et un pilote quotidien. Vous importez votre
+liste d'entreprises (CSV ou JSON), vous piochez une boîte, vous ajoutez une personne : la
+demande de connexion est loguée au passage et l'entonnoir se met à jour seul. Voir
+[Importer sa base marché](#importer-sa-base-marché).
+
 **Interviews** — un kanban pour suivre les entretiens utilisateurs, de « à contacter » à
 « analysé », avec les verbatims.
 
@@ -51,6 +56,46 @@ d'un objectif, avec mode présentation plein écran et export PDF. Le pitch deck
 piochant des slides dans les livrables.
 
 **Finance** — prévisionnel, scénarios, plan de recrutement, comparaison réel / prévu.
+
+## Importer sa base marché
+
+Onglet **Prospection → Importer une base**. Un fichier **CSV** (séparateur `;`, `,` ou
+tabulation) ou **JSON**, collé ou chargé. Un gabarit prêt à remplir est fourni :
+[`data/base-marche.exemple.csv`](data/base-marche.exemple.csv), également téléchargeable depuis
+l'app.
+
+Les colonnes sont reconnues automatiquement, en français comme en anglais, sans tenir compte
+de la casse ni des accents. **Seule la colonne de nom est obligatoire.**
+
+| Champ | Libellés acceptés (entre autres) |
+|---|---|
+| nom **(requis)** | `nom`, `société`, `entreprise`, `company`, `raison sociale` |
+| groupe | `groupe`, `réseau`, `holding`, `group` |
+| rattaché à | `rattaché à`, `maison mère`, `parent` |
+| site web | `site web`, `site`, `url`, `website` |
+| ville / région | `ville`, `implantation`, `région`, `city`, `region` |
+| secteur | `secteur`, `segment`, `industrie`, `sector` |
+| activités | `activités`, `métiers`, `activities` |
+| priorité / score | `priorité`, `prio`, `score`, `note`, `scoring` |
+| statut | `statut`, `étape`, `status` |
+| rôle cible | `rôle cible`, `contact cible`, `target role` |
+| email / téléphone | `email`, `mail`, `téléphone`, `tel`, `phone` |
+| taille | `taille`, `effectif`, `multi-sites`, `size` |
+| sources | `source`, `source 1`, `source 2` (fusionnées en liste) |
+| contact | `contact nominatif`, `rôle`, `email`, `téléphone`, `linkedin` |
+
+**Toute colonne non reconnue est conservée** dans les *champs personnalisés* de la fiche, sous
+son libellé d'origine — surface, chiffre d'affaires, effectif, technologie, vos propres
+scores… Quel que soit votre secteur, rien n'est perdu et rien n'est à coder.
+
+Les priorités, statuts et tailles sont des **libellés libres** : écrivez `A+`, `Haute`, `P1`,
+peu importe. Dans Réglages, vous associez vos libellés à un quota de contacts suggéré par
+entreprise.
+
+Un récapitulatif s'affiche avant écriture (créations, mises à jour, colonnes inconnues,
+rattachements non résolus, lignes en erreur) et reste annulable. Réimporter une base mise à
+jour **complète les fiches sans écraser** votre suivi : le statut et l'historique des
+interactions sont conservés.
 
 ## Vos données
 
@@ -81,6 +126,8 @@ js/deliverables.js  livrables, présentation, pitch deck
 js/dashboard.js     tableau de bord
 js/tasks.js         tâches ponctuelles et récurrentes
 js/crm.js           contacts et interactions
+js/prospection.js   base marché, pilote de prospection
+js/prospection-io.js  import CSV / JSON de la base marché
 js/interviews.js    kanban interviews
 js/calendar.js      calendrier
 js/finance.js       module finance
