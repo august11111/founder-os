@@ -483,7 +483,13 @@
     }
 
     // ── Quitter ──────────────────────────────────────────────
+    // N'a de sens que face au serveur local : en ligne (GitHub Pages), il n'y a
+    // aucun serveur à arrêter et le bouton mènerait à une page morte.
+    const _isLocal = ['localhost', '127.0.0.1', ''].includes(location.hostname);
+    if (!_isLocal) document.getElementById('quit-btn').style.display = 'none';
+
     document.getElementById('quit-btn').addEventListener('click', () => {
+      if (!_isLocal) return;
       confirmModal('Fermer Founder OS et arrêter le serveur local ?', async () => {
         try { await fetch('/--quit'); } catch {}
         // Tenter de fermer l'onglet (fonctionne si ouvert via script)
