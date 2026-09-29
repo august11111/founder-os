@@ -6,25 +6,83 @@ interviews, finances et pitch deck, réunis dans une seule page.
 Pas de compte, pas de serveur, pas d'abonnement. **Toutes vos données restent dans votre
 navigateur (localStorage), rien n'est envoyé nulle part.**
 
-## Lancer l'application
+## Installation
 
-L'app charge ses fichiers par `fetch`, il lui faut donc un petit serveur local —
-ouvrir `index.html` directement en `file://` ne fonctionne pas.
+### Prérequis
+
+**Python 3** — c'est tout. Aucune dépendance à installer, aucun compte à créer.
+
+Vérifiez que vous l'avez :
 
 ```bash
-git clone https://github.com/august11111/founder_os.git
-cd founder_os
-python -m http.server 8000
+python --version
 ```
 
-Puis ouvrez **http://localhost:8000** dans votre navigateur.
+Vous devez voir `Python 3.x`. Si la commande n'est pas reconnue, essayez `py --version`
+(Windows) ou `python3 --version` (macOS / Linux), et utilisez ce nom-là dans la suite.
+Sinon, installez Python depuis [python.org](https://www.python.org/downloads/).
 
-N'importe quel serveur statique fait l'affaire (`npx serve`, l'extension Live Server de
-VS Code…). Le dépôt inclut aussi `server.py`, et sous Windows `launch-founder-os.ps1` qui
-démarre le serveur et ouvre le navigateur d'un coup.
+### 1. Récupérer le projet
 
-Au premier lancement, une roadmap de démonstration et quelques contacts fictifs sont chargés
-pour que rien ne soit vide. Supprimez-les et remplacez-les par les vôtres.
+```bash
+git clone https://github.com/august11111/founder-os.git
+cd founder-os
+```
+
+Pas de git ? Téléchargez le ZIP depuis GitHub (bouton vert **Code → Download ZIP**),
+décompressez-le, et ouvrez un terminal dans le dossier obtenu.
+
+### 2. Démarrer le serveur
+
+```bash
+python server.py
+```
+
+**Laissez cette fenêtre ouverte** : elle fait tourner l'application. Pour l'arrêter,
+fermez-la ou faites `Ctrl+C`.
+
+### 3. Ouvrir l'application
+
+Dans votre navigateur : **http://localhost:8080**
+
+C'est prêt. Au premier lancement, une roadmap de démonstration et quelques contacts fictifs
+sont chargés pour que rien ne soit vide — supprimez-les et remplacez-les par les vôtres.
+
+> **Pourquoi un serveur ?** L'application charge ses fichiers par `fetch`, que les
+> navigateurs bloquent sur les fichiers ouverts en direct. Ouvrir `index.html` d'un
+> double-clic **ne fonctionne pas** : il faut passer par `http://localhost`.
+
+### Raccourci Windows (optionnel)
+
+`launch-founder-os.ps1` démarre le serveur et ouvre le navigateur d'un coup.
+**Clic droit sur le fichier → « Exécuter avec PowerShell ».**
+
+Deux pièges classiques :
+
+- **Un double-clic ouvre le fichier dans le Bloc-notes** au lieu de l'exécuter. C'est le
+  comportement normal de Windows pour les `.ps1` : passez par le clic droit.
+- **« L'exécution de scripts est désactivée sur ce système »** : Windows bloque les scripts
+  non signés. Ouvrez PowerShell et lancez une fois :
+  ```powershell
+  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+  ```
+  Ce réglage autorise les scripts locaux tout en continuant de bloquer ceux téléchargés
+  non signés.
+
+Le script installe aussi un raccourci sur le Bureau si vous lancez `install-shortcut.ps1`.
+
+### Ça ne marche pas ?
+
+| Symptôme | Cause probable |
+|---|---|
+| `python` n'est pas reconnu | Essayez `py server.py` (Windows) ou `python3 server.py` |
+| `Address already in use` | Le port 8080 est déjà pris. Fermez l'autre serveur, ou lancez `python -m http.server 8000` et ouvrez `localhost:8000` |
+| Page blanche, erreurs dans la console | Vous avez ouvert `index.html` en direct. Passez par `http://localhost:8080` |
+| `localhost:8080` ne répond pas | La fenêtre du serveur a été fermée. Relancez `python server.py` |
+| Le bouton « Quitter » ne fait rien | Vous utilisez `python -m http.server` : ce bouton a besoin de `server.py` |
+
+Tout serveur statique fonctionne (`npx serve`, l'extension Live Server de VS Code…), mais
+`server.py` est celui pour lequel l'application est prévue.
 
 ## Ce que ça fait
 
