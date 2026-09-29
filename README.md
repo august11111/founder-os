@@ -6,7 +6,22 @@ interviews, finances et pitch deck, réunis dans une seule page.
 Pas de compte, pas de serveur, pas d'abonnement. **Toutes vos données restent dans votre
 navigateur (localStorage), rien n'est envoyé nulle part.**
 
-## Installation
+## Essayer tout de suite
+
+### → **[august11111.github.io/founder-os](https://august11111.github.io/founder-os/)**
+
+Rien à installer. **Ouvrez ce lien dans Chrome ou Edge.** Toutes vos données restent dans
+votre navigateur, rien n'est envoyé nulle part. Pour ne rien perdre, liez un fichier de
+sauvegarde dans les **Réglages**.
+
+> **À savoir** : vos données sont rattachées à ce navigateur, sur cet ordinateur. Vider le
+> cache du site les efface. La sauvegarde automatique dans un fichier est là pour ça — c'est
+> la première chose à faire.
+
+Vous préférez que tout tourne chez vous, sans dépendre de GitHub ? Suivez l'installation
+ci-dessous : c'est la même application, servie depuis votre machine.
+
+## Installation locale
 
 ### Prérequis
 
@@ -80,6 +95,7 @@ Le script installe aussi un raccourci sur le Bureau si vous lancez `install-shor
 | Page blanche, erreurs dans la console | Vous avez ouvert `index.html` en direct. Passez par `http://localhost:8080` |
 | `localhost:8080` ne répond pas | La fenêtre du serveur a été fermée. Relancez `python server.py` |
 | Le bouton « Quitter » ne fait rien | Vous utilisez `python -m http.server` : ce bouton a besoin de `server.py` |
+| Pas de bouton « Quitter » | Normal en version en ligne : il n'y a aucun serveur local à arrêter |
 
 Tout serveur statique fonctionne (`npx serve`, l'extension Live Server de VS Code…), mais
 `server.py` est celui pour lequel l'application est prévue.
